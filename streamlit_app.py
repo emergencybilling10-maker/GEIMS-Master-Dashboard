@@ -2,19 +2,28 @@ import streamlit as st
 from google.cloud import firestore
 from google.oauth2 import service_account
 import json
-import os
 
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- 0. LOGO DISPLAY (FIXED) ---
-# This looks for the renamed file 'logo.jpg'
-logo_path = "logo.jpg"
-if os.path.exists(logo_path):
-    st.sidebar.image(logo_path, use_container_width=True)
-else:
-    # Backup: This link will work if the file is named logo.jpg on your main branch
-    st.sidebar.image("https://raw.githubusercontent.com/emergencybilling10-maker/geims-master-dashboard/main/logo.jpg", use_container_width=True)
+# --- 0. BACKGROUND BRANDING (FIXED) ---
+# This adds the GEIMS logo as a subtle watermark background
+st.markdown(
+    f"""
+    <style>
+    .stApp {{
+        background-image: url("https://raw.githubusercontent.com/emergencybilling10-maker/geims-master-dashboard/main/geims%20image.jpg");
+        background-attachment: fixed;
+        background-size: 600px;
+        background-repeat: no-repeat;
+        background-position: center;
+        background-color: rgba(255, 255, 255, 0.95);
+        background-blend-mode: overlay;
+    }}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 # --- 1. SECURE DATABASE CONNECTION ---
 if "textkey" in st.secrets:
@@ -44,27 +53,4 @@ with st.sidebar:
     pwd = st.text_input("Admin Password", type="password")
     is_admin = (pwd == "Geims248001")
     if is_admin:
-        all_ids = [b for w in bed_structure.values() for b in w]
-        sel_bed = st.selectbox("Select Bed", all_ids)
-        new_stat = st.selectbox("Status", ["VACANT", "RESTRICTED", "TO BE AWARE", "BOOKED", "ALLOTTED", "DISCHARGE", "UNDER MAINTENANCE"])
-        p_name = st.text_input("Patient Name")
-        if st.button("Update Permanently"):
-            db.collection("beds").document(sel_bed).set({"status": new_stat, "patient": p_name})
-            st.rerun()
-
-# --- 4. DASHBOARD ---
-docs = db.collection("beds").stream()
-live_data = {doc.id: doc.to_dict() for doc in docs}
-status_colors = {"VACANT": "#FFFFFF", "RESTRICTED": "#FF0000", "TO BE AWARE": "#FFFF00", "BOOKED": "#90EE90", "ALLOTTED": "#000000", "DISCHARGE": "#ADD8E6", "UNDER MAINTENANCE": "#E0E0E0"}
-
-st.title("🏥 GEIMS Live Bed Status")
-for wing, beds in bed_structure.items():
-    st.subheader(wing)
-    cols = st.columns(5)
-    for i, bed in enumerate(beds):
-        data = live_data.get(bed, {"status": "VACANT", "patient": ""})
-        bg = status_colors.get(data['status'], "#FFFFFF")
-        txt = "white" if data['status'] in ["ALLOTTED", "RESTRICTED"] else "black"
-        with cols[i % 5]:
-            st.markdown(f'<div style="background-color:{bg}; color:{txt}; padding:10px; border:1px solid #ccc; border-radius:5px; text-align:center; height:100px; margin-bottom:10px;"><div style="font-size:12px; font-weight:bold;">{bed}</div><div style="font-size:10px;">{data["status"]}</div><div style="font-size:11px; font-style:italic;">{data["patient"]}</div></div>', unsafe_allow_html=True)
-    st.divider()
+        all_ids = [b for w in bed_structure.values
