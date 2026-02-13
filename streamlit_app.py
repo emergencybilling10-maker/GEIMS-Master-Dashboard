@@ -53,4 +53,27 @@ with st.sidebar:
     pwd = st.text_input("Admin Password", type="password")
     is_admin = (pwd == "Geims248001")
     if is_admin:
-        all_ids = [b for w in bed_structure.values
+        all_ids = [b for w in bed_structure.values() for b in w]
+        sel_bed = st.selectbox("Select Bed", all_ids)
+        new_stat = st.selectbox("Status", ["VACANT", "RESTRICTED", "TO BE AWARE", "BOOKED", "ALLOTTED", "DISCHARGE", "UNDER MAINTENANCE"])
+        p_name = st.text_input("Patient Name")
+        if st.button("Update Permanently"):
+            db.collection("beds").document(sel_bed).set({"status": new_stat, "patient": p_name})
+            st.rerun()
+
+# --- 4. DASHBOARD ---
+docs = db.collection("beds").stream()
+live_data = {doc.id: doc.to_dict() for doc in docs}
+status_colors = {"VACANT": "#FFFFFF", "RESTRICTED": "#FF0000", "TO BE AWARE": "#FFFF00", "BOOKED": "#90EE90", "ALLOTTED": "#000000", "DISCHARGE": "#ADD8E6", "UNDER MAINTENANCE": "#E0E0E0"}
+
+st.title("🏥 GEIMS Live Bed Status")
+for wing, beds in bed_structure.items():
+    st.subheader(wing)
+    cols = st.columns(5)
+    for i, bed in enumerate(beds):
+        data = live_data.get(bed, {"status": "VACANT", "patient": ""})
+        bg = status_colors.get(data['status'], "#FFFFFF")
+        txt = "white" if data['status'] in ["ALLOTTED", "RESTRICTED"] else "black"
+        with cols[i % 5]:
+            st.markdown(f'<div style="background-color:{bg}; color:{txt}; padding:10px; border:1px solid #ccc; border-radius:5px; text-align:center; height:100px; margin-bottom:10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);"><div style="font-size:12px; font-weight:bold;">{bed}</div><div style="font-size:10px;">{data["status"]}</div><div style="font-size:11px; font-style:italic;">{data["patient"]}</div></div>', unsafe_allow_html=True)
+    st.divider()
