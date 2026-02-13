@@ -7,15 +7,14 @@ import os
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- 0. LOGO DISPLAY (FIXED FOR SPACES) ---
-# We use quote to handle the space in "geims image.jpg"
-logo_file = "geims image.jpg"
-
-if os.path.exists(logo_file):
-    st.sidebar.image(logo_file, use_container_width=True)
+# --- 0. LOGO DISPLAY (FIXED) ---
+# This looks for the renamed file 'logo.jpg'
+logo_path = "logo.jpg"
+if os.path.exists(logo_path):
+    st.sidebar.image(logo_path, use_container_width=True)
 else:
-    # If the local file fails, we try the direct GitHub link
-    st.sidebar.image("https://raw.githubusercontent.com/emergencybilling10-maker/geims-master-dashboard/main/geims%20image.jpg", use_container_width=True)
+    # Backup: This link will work if the file is named logo.jpg on your main branch
+    st.sidebar.image("https://raw.githubusercontent.com/emergencybilling10-maker/geims-master-dashboard/main/logo.jpg", use_container_width=True)
 
 # --- 1. SECURE DATABASE CONNECTION ---
 if "textkey" in st.secrets:
