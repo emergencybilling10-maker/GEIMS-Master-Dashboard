@@ -4,9 +4,9 @@ from google.oauth2 import service_account
 import json
 
 # --- 0. LOGO DISPLAY ---
-# This adds your hospital logo at the very top of the sidebar
-st.logo("https://raw.githubusercontent.com/emergencybilling10-maker/geims-master-dashboard/main/geims%20image.jpg")
-st.sidebar.image("https://raw.githubusercontent.com/emergencybilling10-maker/geims-master-dashboard/main/geims%20image.jpg", use_column_width=True)
+# This looks for the file directly in your GitHub folder
+st.logo("geims image.jpg")
+st.sidebar.image("geims image.jpg", use_container_width=True)
 
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
