@@ -2,14 +2,23 @@ import streamlit as st
 from google.cloud import firestore
 from google.oauth2 import service_account
 import json
+import os
 
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
+# --- 0. LOGO DISPLAY (FIXED) ---
+# We use a try block so the app doesn't crash if the image path is tricky
+logo_file = "geims image.jpg"
+if os.path.exists(logo_file):
+    st.logo(logo_file)
+    st.sidebar.image(logo_file, use_container_width=True)
+else:
+    st.sidebar.warning("Logo file not found. Check GitHub filename.")
+
 # --- 1. SECURE DATABASE CONNECTION ---
 if "textkey" in st.secrets:
     try:
-        # Load the JSON from Streamlit Secrets
         key_dict = json.loads(st.secrets["textkey"])
         creds = service_account.Credentials.from_service_account_info(key_dict)
         db = firestore.Client(credentials=creds)
