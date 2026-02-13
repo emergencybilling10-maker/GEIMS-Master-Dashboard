@@ -3,11 +3,6 @@ from google.cloud import firestore
 from google.oauth2 import service_account
 import json
 
-# --- 0. LOGO DISPLAY ---
-# This looks for the file directly in your GitHub folder
-st.logo("geims image.jpg")
-st.sidebar.image("geims image.jpg", use_container_width=True)
-
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
