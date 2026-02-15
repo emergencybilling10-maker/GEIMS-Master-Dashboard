@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 from google.cloud import firestore
 from google.oauth2 import service_account
 import json
@@ -30,19 +31,36 @@ bed_structure = {
 }
 all_bed_ids = [b for w in bed_structure.values() for b in w]
 
-# --- 3. SYSTEM STATE ---
+# --- 3. SYSTEM STATE & LIVE DATA ---
 status_ref = db.collection("settings").document("dashboard_status")
 current_status_doc = status_ref.get()
 is_live = current_status_doc.to_dict().get("status", "LIVE") if current_status_doc.exists else "LIVE"
 
-# --- 4. HEADER ---
-st.markdown("<h1 style='text-align: center; color: white;'>Graphic Era Institute of Medical Sciences - GEIMS, Dehradun</h1>", unsafe_allow_html=True)
-st.markdown(f"<h4 style='text-align: center; color: gray;'>Live Data Date: {datetime.now().strftime('%d/%m/%Y')}</h4>", unsafe_allow_html=True)
+docs = db.collection("beds").stream()
+live_data = {doc.id: doc.to_dict() for doc in docs}
 
-# --- 5. PATIENT BED REQUEST PLATFORM ---
+# --- 4. HEADER & SUGGESTION 2: OCCUPANCY COUNTER ---
+st.markdown("<h1 style='text-align: center; color: white;'>Graphic Era Institute of Medical Sciences - GEIMS, Dehradun</h1>", unsafe_allow_html=True)
+
+if is_live == "LIVE":
+    total_beds = len(all_bed_ids)
+    occupied_beds = sum(1 for b in live_data.values() if b.get('status') in ["ALLOTTED", "BOOKED", "RESTRICTED"])
+    vacant_beds = total_beds - occupied_beds
+    
+    requests_stream = db.collection("bed_requests").stream()
+    all_reqs = [r.to_dict() for r in requests_stream]
+    waiting_count = sum(1 for r in all_reqs if not r.get('bed_no'))
+
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Total Occupancy %", f"{round((occupied_beds/total_beds)*100)}%")
+    m2.metric("Vacant Private Beds", vacant_beds)
+    m3.metric("Waiting Requests", waiting_count)
+    m4.metric("Last Data Update", datetime.now().strftime('%H:%M'))
+st.divider()
+
+# --- 5. PATIENT BED REQUEST PLATFORM & SUGGESTION 3: EXPORT ---
 with st.expander("📋 OPEN PATIENT BED REQUEST FORM"):
     st.subheader("New Shifting Request")
-    
     with st.form("request_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
@@ -50,10 +68,9 @@ with st.expander("📋 OPEN PATIENT BED REQUEST FORM"):
             req_cat = st.selectbox("CATEGORY", ["ECHS", "TPA", "CGHS CREDIT", "SELF PAY", "CGHS CASH", "ESI", "AYUSHMAN", "ICAR", "UJVN", "UPCL", "ISRO", "BHEL", "ONGC", "OTHER"])
             req_dr = st.text_input("DOCTOR NAME")
         with col2:
-            req_from = st.selectbox("REQUEST TO SHIFT FROM", ["CCU", "ICU", "WARD", "LR", "SEMI-PRIVATE", "PRIVATE", "OTHER"])
+            req_from = st.selectbox("REQUEST FROM", ["CCU", "ICU", "WARD", "LR", "SEMI-PRIVATE", "PRIVATE", "OTHER"])
             req_to = st.selectbox("SHIFTING TO", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
             req_remark = st.text_input("REMARK")
-            
         if st.form_submit_button("Submit Bed Request"):
             if req_name:
                 db.collection("bed_requests").add({
@@ -67,57 +84,38 @@ with st.expander("📋 OPEN PATIENT BED REQUEST FORM"):
                     "remark": req_remark,
                     "bed_no": ""
                 })
-                st.success("Request Submitted!")
-                st.rerun()
-
-    st.divider()
-    
-    # EDIT / REMOVE SECTION
-    st.subheader("📝 Edit or Remove Entry")
-    requests = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.DESCENDING).stream()
-    req_list = []
-    for r in requests:
-        d = r.to_dict()
-        d['ID'] = r.id
-        req_list.append(d)
-
-    if req_list:
-        edit_col1, edit_col2 = st.columns(2)
-        with edit_col1:
-            target_edit = st.selectbox("Select Patient to Edit/Remove", [r['name'] for r in req_list], key="edit_select")
-            action = st.radio("Action", ["Edit Remark", "Remove Entry"], horizontal=True)
-        with edit_col2:
-            new_remark = st.text_input("New Remark (if editing)")
-            if st.button("Confirm Action"):
-                req_id = next(r['ID'] for r in req_list if r['name'] == target_edit)
-                if action == "Remove Entry":
-                    db.collection("bed_requests").document(req_id).delete()
-                    st.success("Entry Removed.")
-                else:
-                    db.collection("bed_requests").document(req_id).update({"remark": new_remark})
-                    st.success("Remark Updated.")
                 st.rerun()
 
     st.divider()
     st.subheader("Current Request Status List")
+    
+    # Suggestion 3: Export to CSV
+    if all_reqs:
+        df = pd.DataFrame(all_reqs)
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Download Daily Request Report", data=csv, file_name=f"GEIMS_Requests_{datetime.now().strftime('%d_%m')}.csv", mime='text/csv')
+
     f_col1, f_col2 = st.columns([2, 1])
     search_query = f_col1.text_input("🔍 Search Name", "").lower()
     filter_status = f_col2.selectbox("Filter Status", ["ALL", "WAITING", "DONE"])
 
     filtered_list = []
-    for r in req_list:
-        b_no = r.get('bed_no', '')
-        status_val = "DONE" if b_no else "WAITING"
-        if (search_query in r.get('name', '').lower()) and (filter_status == "ALL" or filter_status == status_val):
-            r['current_status'] = status_val
-            filtered_list.append(r)
+    # Pull fresh data for IDs
+    requests_full = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.DESCENDING).stream()
+    for r in requests_full:
+        d = r.to_dict()
+        d['ID'] = r.id
+        status_val = "DONE" if d.get('bed_no') else "WAITING"
+        if (search_query in d.get('name', '').lower()) and (filter_status == "ALL" or filter_status == status_val):
+            d['current_status'] = status_val
+            filtered_list.append(d)
         
     if filtered_list:
-        t_cols = st.columns([0.5, 2, 2, 2, 1.5, 1.5, 2, 1.5, 1.5])
-        headers = ["S.N", "NAME", "CATEGORY", "DR.NAME", "FROM", "TO", "REMARK", "BED NO.", "STATUS"]
+        t_cols = st.columns([0.5, 2, 1.5, 1.5, 1, 1, 2, 1, 1])
+        headers = ["S.N", "NAME", "CATEGORY", "DR.NAME", "FROM", "TO", "REMARK", "BED", "STATUS"]
         for col, h in zip(t_cols, headers): col.write(f"**{h}**")
         for idx, r in enumerate(filtered_list):
-            r_cols = st.columns([0.5, 2, 2, 2, 1.5, 1.5, 2, 1.5, 1.5])
+            r_cols = st.columns([0.5, 2, 1.5, 1.5, 1, 1, 2, 1, 1])
             r_cols[0].write(idx + 1)
             r_cols[1].write(r.get('name', '-'))
             r_cols[2].write(r.get('category', '-'))
@@ -129,7 +127,7 @@ with st.expander("📋 OPEN PATIENT BED REQUEST FORM"):
             color = "green" if r['current_status'] == "DONE" else "orange"
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{r['current_status']}</span>", unsafe_allow_html=True)
 
-# --- 6. ADMIN PANEL ---
+# --- 6. ADMIN PANEL & SUGGESTION 1: AUTO-SYNC ---
 with st.sidebar:
     st.header("🔐 Master Controls")
     bed_pwd = st.text_input("Standard Password", type="password")
@@ -149,41 +147,33 @@ with st.sidebar:
             target_req = st.selectbox("Select Patient", [r['name'] for r in waiting_list])
             assigned_bed = st.text_input("Assign Bed Number")
             if st.button("Finalize Allotment"):
+                # SUGGESTION 1: AUTOMATED SYNCING
+                # Update Request List
                 req_id = next(r['ID'] for r in waiting_list if r['name'] == target_req)
                 db.collection("bed_requests").document(req_id).update({"bed_no": assigned_bed})
+                # Auto-update Visual Dashboard
+                if assigned_bed in all_bed_ids:
+                    db.collection("beds").document(assigned_bed).set({"status": "ALLOTTED", "patient": target_req})
+                    st.success(f"Synced {target_req} to {assigned_bed}!")
                 st.rerun()
 
     st.divider()
     sys_pwd = st.text_input("System Password", type="password")
     if sys_pwd == "GeimsAdmin99":
-        st.subheader("⚙️ System Admin")
         new_mode = st.radio("Mode", ["LIVE", "OFFLINE"], index=0 if is_live == "LIVE" else 1)
-        if st.button("Apply"):
-            status_ref.set({"status": new_mode})
-            st.rerun()
-        
-        st.divider()
-        st.error("⚠️ SELECT RESET OPTION")
-        
-        # RESET OPTION 1: CLEAR LIST ONLY
-        if st.button("RESET REQUEST LIST ONLY"):
+        if st.button("Apply"): status_ref.set({"status": new_mode}); st.rerun()
+        if st.button("RESET LIST ONLY"):
             for r in db.collection("bed_requests").stream(): r.reference.delete()
-            st.success("Request List Cleared.")
             st.rerun()
-            
-        # RESET OPTION 2: RESET ALL DASHBOARD BEDS
-        if st.button("RESET ALL DASHBOARD BEDS"):
+        if st.button("RESET ALL BEDS"):
             for b in all_bed_ids: db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
-            st.success("All Beds Reset to VACANT.")
             st.rerun()
 
 # --- 7. DASHBOARD DISPLAY ---
 if is_live != "LIVE":
-    st.error("⚠️ DASHBOARD IS OFFLINE BY ADMIN ANUJ GILL IT WILL LIVE BY 10 AM THANKYOU")
+    st.error("⚠️ DASHBOARD IS OFFLINE")
     st.stop()
 
-docs = db.collection("beds").stream()
-live_data = {doc.id: doc.to_dict() for doc in docs}
 status_colors = {"VACANT": "#FFFFFF", "RESTRICTED": "#FF0000", "BOOKED": "#90EE90", "ALLOTTED": "#000000", "DISCHARGE": "#ADD8E6", "MAINTENANCE": "#E0E0E0"}
 
 st.title("🏥 GEIMS Live Bed Status")
