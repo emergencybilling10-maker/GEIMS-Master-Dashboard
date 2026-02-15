@@ -19,7 +19,7 @@ else:
     st.warning("Admin: Please add the Firestore JSON key to Streamlit Secrets.")
     st.stop()
 
-# --- 2. FULL BED LIST (Fixed) ---
+# --- 2. FULL BED LIST ---
 bed_structure = {
     "Eighth Floor - B Wing": ["B-D-8006", "B-P-8007", "B-P-8008", "B-P-8009", "B-P-8010 SLEEP STUDY", "B-SP-8001-1", "B-SP-8001-2", "B-SP-8002-1", "B-SP-8002-2", "B-SP-8003-1", "B-SP-8003-2", "B-SP-8004-1", "B-SP-8004-2", "B-SP-8005-1", "B-SP-8005-2"],
     "Ninth Floor - A Wing": ["A-P-9001", "A-P-9002", "A-P-9003", "A-P-9004", "A-P-9005 DELUX", "A-SP-9006-1 NEUTROPHILIC", "A-SP-9006-2 NEUTROPHILIC", "A-SP-9007-1", "A-SP-9007-2", "A-SP-9008-1", "A-SP-9008-2", "A-SP-9009-1", "A-SP-9009-2", "A-SP-9010-1", "A-SP-9010-2"],
@@ -38,7 +38,7 @@ is_live = current_status_doc.to_dict().get("status", "LIVE") == "LIVE" if curren
 with st.sidebar:
     st.header("🔐 Master Controls")
     
-    # BED UPDATE PASSWORD (PREVIOUS)
+    # 1. BED UPDATE PASSWORD (PREVIOUS)
     bed_pwd = st.text_input("Bed Update Password", type="password")
     is_bed_admin = (bed_pwd == "Geims248001")
     
@@ -50,35 +50,40 @@ with st.sidebar:
         if st.button("Update Bed Permanently"):
             db.collection("beds").document(sel_bed).set({"status": new_stat, "patient": p_name})
             st.rerun()
+
+    st.divider()
+    
+    # 2. SYSTEM STATUS & RESET PASSWORD (MERGED)
+    sys_pwd = st.text_input("System Admin Password", type="password")
+    is_sys_admin = (sys_pwd == "GeimsAdmin99") 
+    
+    if is_sys_admin:
+        st.subheader("⚙️ System Controls")
+        
+        # Toggle Mode
+        new_mode = st.radio("Toggle Dashboard Mode", ["LIVE", "OFFLINE"], index=0 if is_live else 1)
+        if st.button("Apply Mode Change"):
+            status_ref.set({"status": new_mode})
+            st.rerun()
             
         st.divider()
+        
+        # Merged Reset Option
+        st.error("Danger Zone: Reset All")
         if st.button("RESET ALL BEDS (VACANT)"):
             batch = db.batch()
             for bed_id in all_bed_ids:
                 doc_ref = db.collection("beds").document(bed_id)
                 batch.set(doc_ref, {"status": "VACANT", "patient": ""})
             batch.commit()
-            st.success("All beds reset to VACANT.")
-            st.rerun()
-
-    st.divider()
-    
-    # SYSTEM STATUS PASSWORD (NEW)
-    sys_pwd = st.text_input("System Mode Password", type="password")
-    is_sys_admin = (sys_pwd == "GeimsAdmin99") # Set your desired new password here
-    
-    if is_sys_admin:
-        st.subheader("System Mode")
-        new_mode = st.radio("Toggle Mode", ["LIVE", "OFFLINE"], index=0 if is_live else 1)
-        if st.button("Apply Mode Change"):
-            status_ref.set({"status": new_mode})
+            st.success("All hospital beds have been reset to VACANT.")
             st.rerun()
 
 # --- 5. DASHBOARD DISPLAY ---
 st.markdown("<h1 style='text-align: center; color: white;'>Graphic Era Institute of Medical Sciences - GEIMS, Dehradun</h1>", unsafe_allow_html=True)
 
 if not is_live:
-    st.error("⚠️ DASHBOARD IS CURRENTLY OFFLINE BY ADMIN ANUJ GILL IT WILL LIVE BY 10 AM THANKS")
+    st.error("⚠️ DASHBOARD IS CURRENTLY OFFLINE FOR MAINTENANCE BY ADMIN ANUJ GILL IT WILL LIVE BY 10 AM THANKS")
     st.stop()
 
 docs = db.collection("beds").stream()
