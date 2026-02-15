@@ -184,7 +184,7 @@ with st.sidebar:
 
 # --- 7. DASHBOARD DISPLAY ---
 if is_live != "LIVE":
-    st.error("⚠️ DASHBOARD IS OFFLINE")
+    st.error("⚠️ DASHBOARD IS OFFLINE BY ADMIN ANUJ GILL IT WILL LIVE BY 10 AM THANKYOU")
     st.stop()
 
 status_colors = {"VACANT": "#FFFFFF", "RESTRICTED": "#FF0000", "BOOKED": "#90EE90", "ALLOTTED": "#000000", "DISCHARGE": "#ADD8E6", "MAINTENANCE": "#E0E0E0"}
