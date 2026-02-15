@@ -6,11 +6,6 @@ import json
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- 0. PROFESSIONAL HEADER ---
-# Replaced logo with the requested hospital title
-st.markdown("<h1 style='text-align: center; color: white;'>Graphic Era Institute of Medical Sciences - GEIMS, Dehradun</h1>", unsafe_allow_html=True)
-st.divider()
-
 # --- 1. SECURE DATABASE CONNECTION ---
 if "textkey" in st.secrets:
     try:
@@ -24,30 +19,65 @@ else:
     st.warning("Admin: Please add the Firestore JSON key to Streamlit Secrets.")
     st.stop()
 
-# --- 2. FULL BED LIST ---
+# --- 2. FULL BED LIST (Fixed: Removed B-SP-8001-3) ---
 bed_structure = {
-    "Eighth Floor - B Wing": ["B-D-8006", "B-P-8007", "B-P-8008", "B-P-8009", "B-P-8010 SLEEP STUDY", "B-SP-8001-1", "B-SP-8001-2", "B-SP-8001-3", "B-SP-8002-1", "B-SP-8002-2", "B-SP-8003-1", "B-SP-8003-2", "B-SP-8004-1", "B-SP-8004-2", "B-SP-8005-1", "B-SP-8005-2"],
+    "Eighth Floor - B Wing": ["B-D-8006", "B-P-8007", "B-P-8008", "B-P-8009", "B-P-8010 SLEEP STUDY", "B-SP-8001-1", "B-SP-8001-2", "B-SP-8002-1", "B-SP-8002-2", "B-SP-8003-1", "B-SP-8003-2", "B-SP-8004-1", "B-SP-8004-2", "B-SP-8005-1", "B-SP-8005-2"],
     "Ninth Floor - A Wing": ["A-P-9001", "A-P-9002", "A-P-9003", "A-P-9004", "A-P-9005 DELUX", "A-SP-9006-1 NEUTROPHILIC", "A-SP-9006-2 NEUTROPHILIC", "A-SP-9007-1", "A-SP-9007-2", "A-SP-9008-1", "A-SP-9008-2", "A-SP-9009-1", "A-SP-9009-2", "A-SP-9010-1", "A-SP-9010-2"],
     "Ninth Floor - B Wing": ["B-D-9020", "B-P-9021", "B-P-9022", "B-P-9023", "B-P-9024", "B-SP-9015-1", "B-SP-9015-2", "B-SP-9016-1", "B-SP-9016-2", "B-SP-9017-1", "B-SP-9017-2", "B-SP-9018-1", "B-SP-9018-2", "B-SP-9019-1", "B-SP-9019-2"],
     "Ninth Floor - C Wing": ["C-D-9036", "C-D-9037", "C-D-9038", "C-D-9039", "C-D-9040", "C-P-9032", "C-P-9033", "C-P-9034", "C-P-9035", "C-P-9041-1", "C-P-9041-2"],
     "Ninth Floor - F Wing": ["F-D-9052", "F-P-9048", "F-P-9049", "F-P-9050", "F-P-9051", "F-SP-9053-1", "F-SP-9053-2", "F-SP-9054-1", "F-SP-9054-2", "F-SP-9055-1", "F-SP-9055-2", "F-SP-9056-1", "F-SP-9056-2", "F-SP-9057-1", "F-SP-9057-2"]
 }
 
-# --- 3. ADMIN PANEL ---
+all_bed_ids = [b for w in bed_structure.values() for b in w]
+
+# --- 3. DASHBOARD STATUS LOGIC ---
+status_ref = db.collection("settings").document("dashboard_status")
+current_status_doc = status_ref.get()
+is_live = current_status_doc.to_dict().get("status", "LIVE") == "LIVE" if current_status_doc.exists else True
+
+# --- 4. ADMIN PANEL ---
 with st.sidebar:
     st.header("🔐 Admin Portal")
     pwd = st.text_input("Admin Password", type="password")
     is_admin = (pwd == "Geims248001")
+    
     if is_admin:
-        all_ids = [b for w in bed_structure.values() for b in w]
-        sel_bed = st.selectbox("Select Bed", all_ids)
+        st.subheader("Single Bed Update")
+        sel_bed = st.selectbox("Select Bed", all_bed_ids)
         new_stat = st.selectbox("Status", ["VACANT", "RESTRICTED", "TO BE AWARE", "BOOKED", "ALLOTTED", "DISCHARGE", "UNDER MAINTENANCE"])
         p_name = st.text_input("Patient Name")
         if st.button("Update Permanently"):
             db.collection("beds").document(sel_bed).set({"status": new_stat, "patient": p_name})
             st.rerun()
+            
+        st.divider()
+        st.subheader("System Controls")
+        
+        # Dashboard Status Toggle
+        new_mode = st.radio("System Mode", ["LIVE", "OFFLINE"], index=0 if is_live else 1)
+        if st.button("Change System Mode"):
+            status_ref.set({"status": new_mode})
+            st.success(f"Dashboard is now {new_mode}")
+            st.rerun()
 
-# --- 4. DASHBOARD ---
+        # Global Reset Button
+        st.warning("Danger Zone")
+        if st.button("RESET ALL BEDS (VACANT)"):
+            batch = db.batch()
+            for bed_id in all_bed_ids:
+                doc_ref = db.collection("beds").document(bed_id)
+                batch.set(doc_ref, {"status": "VACANT", "patient": ""})
+            batch.commit()
+            st.success("All beds have been reset to VACANT.")
+            st.rerun()
+
+# --- 5. DASHBOARD DISPLAY ---
+st.markdown("<h1 style='text-align: center; color: white;'>Graphic Era Institute of Medical Sciences - GEIMS, Dehradun</h1>", unsafe_allow_html=True)
+
+if not is_live:
+    st.error("⚠️ DASHBOARD IS CURRENTLY OFFLINE FOR MAINTENANCE")
+    st.stop()
+
 docs = db.collection("beds").stream()
 live_data = {doc.id: doc.to_dict() for doc in docs}
 status_colors = {"VACANT": "#FFFFFF", "RESTRICTED": "#FF0000", "TO BE AWARE": "#FFFF00", "BOOKED": "#90EE90", "ALLOTTED": "#000000", "DISCHARGE": "#ADD8E6", "UNDER MAINTENANCE": "#E0E0E0"}
