@@ -20,7 +20,7 @@ else:
     st.warning("Admin: Please add the Firestore JSON key to Streamlit Secrets.")
     st.stop()
 
-# --- 2. FULL BED LIST (Fixed) ---
+# --- 2. FULL BED LIST ---
 bed_structure = {
     "Eighth Floor - B Wing": ["B-D-8006", "B-P-8007", "B-P-8008", "B-P-8009", "B-P-8010 SLEEP STUDY", "B-SP-8001-1", "B-SP-8001-2", "B-SP-8002-1", "B-SP-8002-2", "B-SP-8003-1", "B-SP-8003-2", "B-SP-8004-1", "B-SP-8004-2", "B-SP-8005-1", "B-SP-8005-2"],
     "Ninth Floor - A Wing": ["A-P-9001", "A-P-9002", "A-P-9003", "A-P-9004", "A-P-9005 DELUX", "A-SP-9006-1 NEUTROPHILIC", "A-SP-9006-2 NEUTROPHILIC", "A-SP-9007-1", "A-SP-9007-2", "A-SP-9008-1", "A-SP-9008-2", "A-SP-9009-1", "A-SP-9009-2", "A-SP-9010-1", "A-SP-9010-2"],
@@ -30,55 +30,85 @@ bed_structure = {
 }
 all_bed_ids = [b for w in bed_structure.values() for b in w]
 
-# --- 3. SYSTEM STATE & HEADER ---
+# --- 3. SYSTEM STATE ---
 status_ref = db.collection("settings").document("dashboard_status")
 current_status_doc = status_ref.get()
 is_live = current_status_doc.to_dict().get("status", "LIVE") == "LIVE" if current_status_doc.exists else True
 
+# --- 4. HEADER ---
 st.markdown("<h1 style='text-align: center; color: white;'>Graphic Era Institute of Medical Sciences - GEIMS, Dehradun</h1>", unsafe_allow_html=True)
+st.markdown(f"<h4 style='text-align: center; color: gray;'>Date: {datetime.now().strftime('%d/%m/%Y')}</h4>", unsafe_allow_html=True)
 
-# --- 4. PATIENT BED REQUEST PLATFORM (EXCEL REFERENCE) ---
+# --- 5. PATIENT BED REQUEST PLATFORM (POP-UP) ---
 with st.expander("📋 OPEN PATIENT BED REQUEST FORM (Click to Pop Up/Minimize)"):
-    st.subheader("New Bed Request Details")
-    col1, col2, col3 = st.columns(3)
+    st.subheader("New Shifting Request")
     
-    with col1:
-        req_name = st.text_input("Patient Name")
-        req_cat = st.selectbox("Category", ["General", "Private", "Semi-Private", "Deluxe"])
-        req_dr = st.text_input("Doctor Name")
-    with col2:
-        req_from = st.text_input("Shift From")
-        req_to = st.text_input("Shift To")
-        req_wing = st.selectbox("Wing", list(bed_structure.keys()))
-    with col3:
-        req_status = st.selectbox("Request Status", ["PENDING", "APPROVED", "CANCELLED"])
-        req_remark = st.text_area("Remark")
-    
-    if st.button("Submit Request"):
-        if req_name:
-            db.collection("bed_requests").add({
-                "timestamp": datetime.now(),
-                "name": req_name,
-                "category": req_cat,
-                "dr_name": req_dr,
-                "shift_from": req_from,
-                "shift_to": req_to,
-                "remark": req_remark,
-                "status": req_status,
-                "wing": req_wing
-            })
-            st.success(f"Request for {req_name} submitted successfully!")
-        else:
-            st.error("Please enter a Patient Name.")
+    with st.form("request_form", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            req_name = st.text_input("NAME (Patient Name)")
+            req_cat = st.selectbox("CATEGORY", ["ECHS", "TPA", "CGHS CREDIT", "SELF PAY", "CGHS CASH", "ESI", "AYUSHMAN", "ICAR", "UJVN", "UPCL", "ISRO", "BHEL", "ONGC", "OTHER"])
+            req_dr = st.text_input("DOCTOR NAME")
+        with col2:
+            req_from = st.selectbox("REQUEST TO SHIFT FROM", ["CCU", "ICU", "WARD", "LR", "SEMI-PRIVATE", "PRIVATE", "OTHER"])
+            req_to = st.selectbox("SHIFTING TO", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
+            req_remark = st.text_input("REMARK")
+            
+        if st.form_submit_button("Submit Bed Request"):
+            if req_name:
+                db.collection("bed_requests").add({
+                    "date": datetime.now().strftime('%d/%m/%Y'),
+                    "timestamp": datetime.now(),
+                    "name": req_name,
+                    "category": req_cat,
+                    "dr_name": req_dr,
+                    "shift_from": req_from,
+                    "shift_to": req_to,
+                    "remark": req_remark,
+                    "bed_no": ""
+                })
+                st.success("Request Submitted Successfully!")
+                st.rerun()
 
     st.divider()
-    st.subheader("Recent Bed Requests")
-    req_docs = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.DESCENDING).limit(5).stream()
-    for r in req_docs:
-        r_data = r.to_dict()
-        st.info(f"**{r_data['name']}** | {r_data['dr_name']} | {r_data['shift_from']} ➔ {r_data['shift_to']} | Status: {r_data['status']}")
+    
+    # SEARCH AND FILTER SECTION
+    st.subheader("Current Request Status List")
+    f_col1, f_col2 = st.columns([2, 1])
+    search_query = f_col1.text_input("🔍 Search Patient Name", "").lower()
+    filter_status = f_col2.selectbox("Filter Status", ["ALL", "WAITING", "DONE"])
 
-# --- 5. ADMIN PANEL ---
+    requests = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.DESCENDING).stream()
+    req_list = []
+    for r in requests:
+        d = r.to_dict()
+        d['ID'] = r.id
+        status_val = "DONE" if d['bed_no'] else "WAITING"
+        if (search_query in d['name'].lower()) and (filter_status == "ALL" or filter_status == status_val):
+            req_list.append(d)
+        
+    if req_list:
+        t_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1])
+        headers = ["S.N", "NAME", "CATEGORY", "DR.NAME", "FROM", "TO", "REMARK", "BED", "STATUS"]
+        for col, h in zip(t_cols, headers): col.write(f"**{h}**")
+        
+        for idx, r in enumerate(req_list):
+            r_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1])
+            r_cols[0].write(idx + 1)
+            r_cols[1].write(r['name'])
+            r_cols[2].write(r['category'])
+            r_cols[3].write(r['dr_name'])
+            r_cols[4].write(r['shift_from'])
+            r_cols[5].write(r['shift_to'])
+            r_cols[6].write(r['remark'])
+            r_cols[7].write(r['bed_no'] if r['bed_no'] else "-")
+            status_text = "DONE" if r['bed_no'] else "WAITING"
+            status_color = "green" if status_text == "DONE" else "orange"
+            r_cols[8].markdown(f"<span style='color:{status_color}; font-weight:bold;'>{status_text}</span>", unsafe_allow_html=True)
+    else:
+        st.info("No matching requests found.")
+
+# --- 6. ADMIN PANEL ---
 with st.sidebar:
     st.header("🔐 Master Controls")
     
@@ -86,12 +116,24 @@ with st.sidebar:
     bed_pwd = st.text_input("Bed Update Password", type="password")
     if (bed_pwd == "Geims248001"):
         st.subheader("Bed Management")
-        sel_bed = st.selectbox("Select Bed", all_bed_ids)
+        sel_bed = st.selectbox("Select Dashboard Bed", all_bed_ids)
         new_stat = st.selectbox("Status", ["VACANT", "RESTRICTED", "TO BE AWARE", "BOOKED", "ALLOTTED", "DISCHARGE", "UNDER MAINTENANCE"])
-        p_name = st.text_input("Update Patient Name")
-        if st.button("Update Bed Permanently"):
+        p_name = st.text_input("Patient Name for Dashboard")
+        if st.button("Update Dashboard Bed"):
             db.collection("beds").document(sel_bed).set({"status": new_stat, "patient": p_name})
             st.rerun()
+            
+        st.divider()
+        st.subheader("Process Bed Request")
+        waiting_reqs = [r['name'] for r in req_list if not r['bed_no']]
+        if waiting_reqs:
+            target_req = st.selectbox("Select Patient to Allot", waiting_reqs)
+            assigned_bed = st.text_input("Enter Allotted Bed No.")
+            if st.button("Complete Allotment"):
+                req_id = next(item['ID'] for item in req_list if item["name"] == target_req)
+                db.collection("bed_requests").document(req_id).update({"bed_no": assigned_bed})
+                st.success(f"Bed {assigned_bed} allotted.")
+                st.rerun()
 
     st.divider()
     
@@ -99,19 +141,22 @@ with st.sidebar:
     sys_pwd = st.text_input("System Admin Password", type="password")
     if (sys_pwd == "GeimsAdmin99"):
         st.subheader("⚙️ System Controls")
-        new_mode = st.radio("Toggle Dashboard Mode", ["LIVE", "OFFLINE"], index=0 if is_live else 1)
+        new_mode = st.radio("System Mode", ["LIVE", "OFFLINE"], index=0 if is_live else 1)
         if st.button("Apply Mode Change"):
             status_ref.set({"status": new_mode})
             st.rerun()
-        if st.button("RESET ALL BEDS (VACANT)"):
+        if st.button("RESET ALL BED REQUESTS"):
+            req_batch = db.batch()
+            for r in db.collection("bed_requests").stream(): req_batch.delete(r.reference)
+            req_batch.commit()
+            st.rerun()
+        if st.button("RESET ALL DASHBOARD BEDS"):
             batch = db.batch()
-            for bed_id in all_bed_ids:
-                doc_ref = db.collection("beds").document(bed_id)
-                batch.set(doc_ref, {"status": "VACANT", "patient": ""})
+            for b in all_bed_ids: batch.set(db.collection("beds").document(b), {"status": "VACANT", "patient": ""})
             batch.commit()
             st.rerun()
 
-# --- 6. DASHBOARD DISPLAY ---
+# --- 7. DASHBOARD DISPLAY ---
 if not is_live:
     st.error("⚠️ DASHBOARD IS CURRENTLY OFFLINE FOR MAINTENANCE")
     st.stop()
