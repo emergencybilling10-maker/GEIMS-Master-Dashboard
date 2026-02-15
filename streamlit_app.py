@@ -75,7 +75,7 @@ with st.sidebar:
 st.markdown("<h1 style='text-align: center; color: white;'>Graphic Era Institute of Medical Sciences - GEIMS, Dehradun</h1>", unsafe_allow_html=True)
 
 if not is_live:
-    st.error("⚠️ DASHBOARD IS CURRENTLY OFFLINE FOR MAINTENANCE")
+    st.error("⚠️ DASHBOARD IS CURRENTLY OFFLINE BY ANUJ GILL IT WILL BY 10 AM")
     st.stop()
 
 docs = db.collection("beds").stream()
