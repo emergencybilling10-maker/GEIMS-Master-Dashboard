@@ -117,7 +117,7 @@ with st.sidebar:
     if (bed_pwd == "Geims248001"):
         st.subheader("Bed Management")
         sel_bed = st.selectbox("Select Dashboard Bed", all_bed_ids)
-        new_stat = st.selectbox("Status", ["VACANT", "RESTRICTED", "TO BE AWARE", "BOOKED", "ALLOTTED", "DISCHARGE", "UNDER MAINTENANCE"])
+        new_stat = st.selectbox("Status", ["VACANT", "RESTRICTED", "TO BE AWARE", "BOOKED", "ALLOTTED", "GOING DISCHARGE", "UNDER MAINTENANCE"])
         p_name = st.text_input("Patient Name for Dashboard")
         if st.button("Update Dashboard Bed"):
             db.collection("beds").document(sel_bed).set({"status": new_stat, "patient": p_name})
@@ -158,7 +158,7 @@ with st.sidebar:
 
 # --- 7. DASHBOARD DISPLAY ---
 if not is_live:
-    st.error("⚠️ DASHBOARD IS CURRENTLY OFFLINE FOR MAINTENANCE")
+    st.error("⚠️ DASHBOARD IS CURRENTLY OFFLINE BY ADMIN ANUJ GILL IT WILL LIVE BY 10 AM THANKYOU")
     st.stop()
 
 docs = db.collection("beds").stream()
