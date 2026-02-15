@@ -2,6 +2,7 @@ import streamlit as st
 from google.cloud import firestore
 from google.oauth2 import service_account
 import json
+from datetime import datetime
 
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
@@ -38,7 +39,7 @@ is_live = current_status_doc.to_dict().get("status", "LIVE") == "LIVE" if curren
 with st.sidebar:
     st.header("🔐 Master Controls")
     
-    # 1. BED UPDATE PASSWORD (PREVIOUS)
+    # BED UPDATE PASSWORD (PREVIOUS)
     bed_pwd = st.text_input("Bed Update Password", type="password")
     is_bed_admin = (bed_pwd == "Geims248001")
     
@@ -53,39 +54,69 @@ with st.sidebar:
 
     st.divider()
     
-    # 2. SYSTEM STATUS & RESET PASSWORD (MERGED)
+    # SYSTEM STATUS & RESET PASSWORD
     sys_pwd = st.text_input("System Admin Password", type="password")
     is_sys_admin = (sys_pwd == "GeimsAdmin99") 
     
     if is_sys_admin:
         st.subheader("⚙️ System Controls")
-        
-        # Toggle Mode
-        new_mode = st.radio("Toggle Dashboard Mode", ["LIVE", "OFFLINE"], index=0 if is_live else 1)
-        if st.button("Apply Mode Change"):
-            status_ref.set({"status": new_mode})
-            st.rerun()
-            
-        st.divider()
-        
-        # Merged Reset Option
-        st.error("Danger Zone: Reset All")
         if st.button("RESET ALL BEDS (VACANT)"):
             batch = db.batch()
             for bed_id in all_bed_ids:
                 doc_ref = db.collection("beds").document(bed_id)
                 batch.set(doc_ref, {"status": "VACANT", "patient": ""})
             batch.commit()
-            st.success("All hospital beds have been reset to VACANT.")
             st.rerun()
+            
+        st.divider()
+        st.subheader("Bed Requests (Pending)")
+        reqs = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.DESCENDING).stream()
+        for r in reqs:
+            r_data = r.to_dict()
+            st.write(f"**{r_data['name']}** ({r_data['category']})")
+            st.caption(f"From: {r_data['shift_from']} ➡️ To: {r_data['shift_to']}")
+            if st.button(f"Clear Request {r.id[:5]}"):
+                db.collection("bed_requests").document(r.id).delete()
+                st.rerun()
 
 # --- 5. DASHBOARD DISPLAY ---
 st.markdown("<h1 style='text-align: center; color: white;'>Graphic Era Institute of Medical Sciences - GEIMS, Dehradun</h1>", unsafe_allow_html=True)
 
 if not is_live:
-    st.error("⚠️ DASHBOARD IS CURRENTLY OFFLINE FOR MAINTENANCE BY ADMIN ANUJ GILL IT WILL LIVE BY 10 AM THANKS")
+    st.error("⚠️ DASHBOARD IS CURRENTLY OFFLINE FOR MAINTENANCE")
     st.stop()
 
+# --- NEW BED REQUEST PLATFORM ---
+with st.expander("📝 NEW PATIENT BED REQUEST FORM"):
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        req_name = st.text_input("Patient Name")
+        req_cat = st.selectbox("Category", ["GENERAL", "PRIVATE", "DELUXE", "SEMI-PRIVATE"])
+    with col2:
+        req_dr = st.text_input("Doctor Name")
+        req_from = st.text_input("Shift From (e.g., ER)")
+    with col3:
+        req_to = st.text_input("Shift To (e.g., 9th Floor)")
+        req_remark = st.text_area("Remarks", height=68)
+    
+    if st.button("Submit Request"):
+        if req_name:
+            db.collection("bed_requests").add({
+                "name": req_name,
+                "category": req_cat,
+                "doctor": req_dr,
+                "shift_from": req_from,
+                "shift_to": req_to,
+                "remark": req_remark,
+                "timestamp": datetime.now()
+            })
+            st.success("Request submitted to GEIMS Coordination Office.")
+        else:
+            st.error("Please enter Patient Name.")
+
+st.divider()
+
+# --- BED STATUS GRID ---
 docs = db.collection("beds").stream()
 live_data = {doc.id: doc.to_dict() for doc in docs}
 status_colors = {"VACANT": "#FFFFFF", "RESTRICTED": "#FF0000", "TO BE AWARE": "#FFFF00", "BOOKED": "#90EE90", "ALLOTTED": "#000000", "DISCHARGE": "#ADD8E6", "UNDER MAINTENANCE": "#E0E0E0"}
