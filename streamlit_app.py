@@ -179,7 +179,7 @@ with st.sidebar:
 
 # --- 7. DASHBOARD DISPLAY ---
 if is_live != "LIVE":
-    st.error("⚠️ DASHBOARD IS OFFLINE")
+    st.error("⚠️ DASHBOARD IS OFFLINE BY ADMIN ANUJ GILL IT WILL LIVE BY 10 AM THANKYOU")
     st.stop()
 
 docs = db.collection("beds").stream()
