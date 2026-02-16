@@ -4,23 +4,21 @@ from google.cloud import firestore
 from google.oauth2 import service_account
 import json
 from datetime import datetime
-import pytz
 
-# Page Config - Optimized for performance
+# Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
 # --- 1. SECURE DATABASE CONNECTION ---
-@st.cache_resource # Cache the connection so it doesn't reconnect every time
-def get_db():
-    if "textkey" in st.secrets:
+if "textkey" in st.secrets:
+    try:
         key_dict = json.loads(st.secrets["textkey"])
         creds = service_account.Credentials.from_service_account_info(key_dict)
-        return firestore.Client(credentials=creds)
-    return None
-
-db = get_db()
-if not db:
-    st.error("Connection Error: Secrets not found.")
+        db = firestore.Client(credentials=creds)
+    except Exception as e:
+        st.error(f"Secret Key Error: {e}")
+        st.stop()
+else:
+    st.warning("Admin: Please add the Firestore JSON key to Streamlit Secrets.")
     st.stop()
 
 # --- 2. FULL BED LIST ---
@@ -33,27 +31,24 @@ bed_structure = {
 }
 all_bed_ids = [b for w in bed_structure.values() for b in w]
 
-# --- 3. LIVE DATA FETCH (Optimized) ---
+# --- 3. SYSTEM STATE & LIVE DATA FETCH ---
 status_ref = db.collection("settings").document("dashboard_status")
 current_status_doc = status_ref.get()
 is_live = current_status_doc.to_dict().get("status", "LIVE") if current_status_doc.exists else "LIVE"
 
-# Fetch beds
+# Pre-fetch all data to avoid NameErrors
 docs = db.collection("beds").stream()
 live_data = {doc.id: doc.to_dict() for doc in docs}
 
-# Fetch requests (Limited to 100 most recent to prevent freezing)
-requests_stream = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.DESCENDING).limit(100).stream()
+requests_stream = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.DESCENDING).stream()
 all_reqs = []
 for r in requests_stream:
     d = r.to_dict()
     d['ID'] = r.id
     all_reqs.append(d)
 
-# --- 4. HEADER & LIVE DATE ---
+# --- 4. HEADER & LIVE METRICS ---
 st.markdown("<h1 style='text-align: center; color: white;'>Graphic Era Institute of Medical Sciences - GEIMS, Dehradun</h1>", unsafe_allow_html=True)
-tz = pytz.timezone('Asia/Kolkata')
-live_date_str = datetime.now(tz).strftime('%d/%m/%Y')
 
 if is_live == "LIVE":
     total_beds = len(all_bed_ids)
@@ -61,10 +56,10 @@ if is_live == "LIVE":
     waiting_count = sum(1 for r in all_reqs if not r.get('bed_no'))
 
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Total Occupancy", f"{round((occupied_beds/total_beds)*100) if total_beds > 0 else 0}%")
+    m1.metric("Total Occupancy", f"{round((occupied_beds/total_beds)*100)}%")
     m2.metric("Vacant Beds", total_beds - occupied_beds)
     m3.metric("Waiting Shifting", waiting_count)
-    m4.metric("Live Date", live_date_str)
+    m4.metric("Live Date", datetime.now().strftime('%d/%m/%Y')) # FIXED: Live Date
 st.divider()
 
 # --- 5. PATIENT BED REQUEST PLATFORM ---
@@ -83,7 +78,7 @@ with st.expander("📋 OPEN PATIENT BED REQUEST FORM"):
         if st.form_submit_button("Submit Bed Request"):
             if req_name:
                 db.collection("bed_requests").add({
-                    "date": live_date_str,
+                    "date": datetime.now().strftime('%d/%m/%Y'),
                     "timestamp": datetime.now(),
                     "name": req_name,
                     "category": req_cat,
@@ -97,7 +92,7 @@ with st.expander("📋 OPEN PATIENT BED REQUEST FORM"):
 
     st.divider()
     
-    # EDIT / REMOVE FEATURE
+    # --- RESTORED: EDIT / REMOVE FEATURE ---
     if all_reqs:
         st.subheader("📝 Edit or Remove Entry")
         edit_col1, edit_col2 = st.columns(2)
@@ -110,14 +105,17 @@ with st.expander("📋 OPEN PATIENT BED REQUEST FORM"):
                 r_id = next(r['ID'] for r in all_reqs if r['name'] == target_edit)
                 if action == "Remove Entry":
                     db.collection("bed_requests").document(r_id).delete()
+                    st.success("Entry Deleted.")
                 else:
                     db.collection("bed_requests").document(r_id).update({"remark": new_val})
+                    st.success("Remark Updated.")
                 st.rerun()
+        st.divider()
 
-    st.subheader("Current Shifting List (Last 100)")
+    st.subheader("Current Shifting List")
     if all_reqs:
         df_export = pd.DataFrame(all_reqs).drop(columns=['ID', 'timestamp'], errors='ignore')
-        st.download_button("📥 Download Report", data=df_export.to_csv(index=False), file_name=f"GEIMS_Report_{live_date_str}.csv")
+        st.download_button("📥 Download Report", data=df_export.to_csv(index=False), file_name="GEIMS_Report.csv")
 
     f_col1, f_col2 = st.columns([2, 1])
     search_query = f_col1.text_input("🔍 Search Name", "").lower()
@@ -148,6 +146,15 @@ with st.sidebar:
     st.header("🔐 Master Controls")
     bed_pwd = st.text_input("Standard Password", type="password")
     if bed_pwd == "Geims248001":
+        st.subheader("Dashboard Update")
+        sel_bed = st.selectbox("Select Bed", all_bed_ids)
+        new_stat = st.selectbox("Status", ["VACANT", "RESTRICTED", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE"])
+        p_name = st.text_input("Patient Name")
+        if st.button("Update Dashboard"):
+            db.collection("beds").document(sel_bed).set({"status": new_stat, "patient": p_name})
+            st.rerun()
+            
+        st.divider()
         st.subheader("Process Allotment")
         waiting_list = [r for r in filtered_list if r['current_status'] == "WAITING"]
         if waiting_list:
@@ -158,22 +165,15 @@ with st.sidebar:
                 db.collection("bed_requests").document(req_id).update({"bed_no": assigned_bed})
                 if assigned_bed in all_bed_ids:
                     db.collection("beds").document(assigned_bed).set({"status": "ALLOTTED", "patient": target_req})
+                    st.success(f"Synced {target_req} to {assigned_bed}!")
                 st.rerun()
-            
-        st.divider()
-        st.subheader("Manual Bed Update")
-        sel_bed = st.selectbox("Select Bed", all_bed_ids)
-        new_stat = st.selectbox("Status", ["VACANT", "RESTRICTED", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE"])
-        p_name = st.text_input("Patient Name")
-        if st.button("Update Dashboard"):
-            db.collection("beds").document(sel_bed).set({"status": new_stat, "patient": p_name})
-            st.rerun()
 
     st.divider()
     sys_pwd = st.text_input("System Admin Password", type="password")
     if sys_pwd == "GeimsAdmin99":
+        st.subheader("⚙️ System Admin")
         new_mode = st.radio("Mode", ["LIVE", "OFFLINE"], index=0 if is_live == "LIVE" else 1)
-        if st.button("Apply Mode"): status_ref.set({"status": new_mode}); st.rerun()
+        if st.button("Apply"): status_ref.set({"status": new_mode}); st.rerun()
         if st.button("RESET LIST ONLY"):
             for r in db.collection("bed_requests").stream(): r.reference.delete()
             st.rerun()
@@ -183,10 +183,13 @@ with st.sidebar:
 
 # --- 7. DASHBOARD DISPLAY ---
 if is_live != "LIVE":
-    st.error("⚠️ DASHBOARD IS OFFLINE BY ADMIN")
+    st.error("⚠️ DASHBOARD IS OFFLINE")
     st.stop()
 
 status_colors = {"VACANT": "#FFFFFF", "RESTRICTED": "#FF0000", "BOOKED": "#90EE90", "ALLOTTED": "#000000", "DISCHARGE": "#ADD8E6", "MAINTENANCE": "#E0E0E0"}
+
+
+
 st.title("🏥 GEIMS Live Bed Status")
 for wing, beds in bed_structure.items():
     st.subheader(wing)
