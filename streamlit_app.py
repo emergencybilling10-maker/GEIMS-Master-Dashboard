@@ -1,22 +1,22 @@
 import streamlit as st
+import pandas as pd
 from google.cloud import firestore
 from google.oauth2 import service_account
 import json
 from datetime import datetime
 
-# Page Config - Performance First
+# Page Config - Stripped to the bone for speed
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- 1. FAST DATABASE CONNECTION ---
-@st.cache_resource
-def get_db():
-    if "textkey" in st.secrets:
-        key_dict = json.loads(st.secrets["textkey"])
-        creds = service_account.Credentials.from_service_account_info(key_dict)
-        return firestore.Client(credentials=creds)
-    return None
-
-db = get_db()
+# --- 1. DIRECT DATABASE CONNECTION (NO CACHING) ---
+# We are removing @st.cache_resource to clear out old "stuck" data
+if "textkey" in st.secrets:
+    key_dict = json.loads(st.secrets["textkey"])
+    creds = service_account.Credentials.from_service_account_info(key_dict)
+    db = firestore.Client(credentials=creds)
+else:
+    st.error("Secrets not found. Please check Streamlit Cloud settings.")
+    st.stop()
 
 # --- 2. BED STRUCTURE ---
 bed_structure = {
@@ -28,63 +28,41 @@ bed_structure = {
 }
 all_bed_ids = [b for w in bed_structure.values() for b in w]
 
-# --- 3. LIVE DATA ---
-# Fetch only the beds to keep it fast
+# --- 3. LIVE BED DATA ---
+# Fetching only the current bed status (Smallest possible data load)
 docs = db.collection("beds").stream()
 live_data = {doc.id: doc.to_dict() for doc in docs}
 
 # --- 4. HEADER ---
-st.title("🏥 GEIMS Master Bed Tracker")
-st.divider()
+st.title("🏥 GEIMS Master Bed Tracker (Reset Mode)")
 
-# --- 5. SIMPLE BED REQUEST FORM ---
-with st.expander("📋 ADD NEW BED REQUEST"):
-    with st.form("simple_form", clear_on_submit=True):
-        c1, c2 = st.columns(2)
-        p_name = c1.text_input("PATIENT NAME")
-        p_cat = c1.selectbox("CATEGORY", ["ECHS", "TPA", "CGHS", "SELF PAY", "AYUSHMAN", "OTHER"])
-        p_fr = c2.selectbox("FROM", ["CCU", "ICU", "WARD", "LR", "OTHER"])
-        p_to = c2.selectbox("TO", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
-        if st.form_submit_button("Submit"):
-            db.collection("bed_requests").add({
-                "timestamp": datetime.now(),
-                "name": p_name,
-                "category": p_cat,
-                "shift_from": p_fr,
-                "shift_to": p_to,
-                "bed_no": ""
-            })
-            st.success("Submitted!")
-            st.rerun()
-
-# --- 6. ADMIN PANEL ---
+# --- 5. ADMIN CONTROLS (EMERGENCY DATA CLEARING) ---
 with st.sidebar:
-    st.header("🔐 Admin")
+    st.header("🔐 Emergency Tools")
     pwd = st.text_input("Password", type="password")
-    if pwd == "Geims248001":
-        st.subheader("Manual Update")
-        sel_bed = st.selectbox("Select Bed", all_bed_ids)
-        new_stat = st.selectbox("Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE"])
-        p_label = st.text_input("Name")
-        if st.button("Update"):
-            db.collection("beds").document(sel_bed).set({"status": new_stat, "patient": p_label})
-            st.rerun()
-
+    
     if pwd == "GeimsAdmin99":
-        st.subheader("⚠️ System Reset")
-        if st.button("RESET ALL BEDS"):
-            for b in all_bed_ids:
-                db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
-            st.rerun()
-        if st.button("CLEAR ALL REQUESTS"):
-            # This will delete the request history to free up memory
+        st.error("DANGER ZONE")
+        if st.button("DELETE ALL REQUEST HISTORY"):
+            # This wipes the historical data that is causing the app to hang.
             for r in db.collection("bed_requests").stream():
                 r.reference.delete()
+            st.success("History Purged. App should load faster now.")
             st.rerun()
 
-# --- 7. BED TILES ---
-status_colors = {"VACANT": "#FFFFFF", "BOOKED": "#90EE90", "ALLOTTED": "#000000", "DISCHARGE": "#ADD8E6", "MAINTENANCE": "#E0E0E0"}
+    if pwd == "Geims248001":
+        st.subheader("Manual Bed Update")
+        sel_bed = st.selectbox("Bed No.", all_bed_ids)
+        new_stat = st.selectbox("Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE"])
+        p_name = st.text_input("Patient Name")
+        if st.button("Update"):
+            db.collection("beds").document(sel_bed).set({"status": new_stat, "patient": p_name})
+            st.rerun()
 
+# --- 6. BED GRID ---
+status_colors = {"VACANT": "#FFFFFF", "BOOKED": "#90EE90", "ALLOTTED": "#000000", "DISCHARGE": "#ADD8E6"}
+
+st.header("Bed Status Grid")
 for wing, beds in bed_structure.items():
     st.subheader(wing)
     cols = st.columns(5)
@@ -93,5 +71,5 @@ for wing, beds in bed_structure.items():
         bg = status_colors.get(data.get('status', 'VACANT'), "#FFFFFF")
         txt = "white" if data.get('status') == "ALLOTTED" else "black"
         with cols[i % 5]:
-            st.markdown(f'<div style="background-color:{bg}; color:{txt}; padding:5px; border:1px solid #ccc; border-radius:5px; text-align:center; height:60px;"><div style="font-size:11px; font-weight:bold;">{bed}</div><div style="font-size:10px;">{data.get("patient", "")}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="background-color:{bg}; color:{txt}; padding:5px; border:1px solid #ccc; border-radius:5px; text-align:center; height:60px; font-size:10px;"><b>{bed}</b><br>{data.get("patient", "")}</div>', unsafe_allow_html=True)
     st.divider()
