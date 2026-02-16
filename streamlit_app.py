@@ -1,15 +1,13 @@
 import streamlit as st
-import pandas as pd
 from google.cloud import firestore
 from google.oauth2 import service_account
 import json
 from datetime import datetime
-import pytz
 
-# Page Config
+# Page Config - Performance First
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- 1. SECURE DATABASE CONNECTION (OPTIMIZED) ---
+# --- 1. FAST DATABASE CONNECTION ---
 @st.cache_resource
 def get_db():
     if "textkey" in st.secrets:
@@ -20,7 +18,7 @@ def get_db():
 
 db = get_db()
 
-# --- 2. BED LIST ---
+# --- 2. BED STRUCTURE ---
 bed_structure = {
     "Eighth Floor - B Wing": ["B-D-8006", "B-P-8007", "B-P-8008", "B-P-8009", "B-P-8010 SLEEP STUDY", "B-SP-8001-1", "B-SP-8001-2", "B-SP-8002-1", "B-SP-8002-2", "B-SP-8003-1", "B-SP-8003-2", "B-SP-8004-1", "B-SP-8004-2", "B-SP-8005-1", "B-SP-8005-2"],
     "Ninth Floor - A Wing": ["A-P-9001", "A-P-9002", "A-P-9003", "A-P-9004", "A-P-9005 DELUX", "A-SP-9006-1 NEUTROPHILIC", "A-SP-9006-2 NEUTROPHILIC", "A-SP-9007-1", "A-SP-9007-2", "A-SP-9008-1", "A-SP-9008-2", "A-SP-9009-1", "A-SP-9009-2", "A-SP-9010-1", "A-SP-9010-2"],
@@ -30,82 +28,62 @@ bed_structure = {
 }
 all_bed_ids = [b for w in bed_structure.values() for b in w]
 
-# --- 3. SYSTEM STATE ---
-status_ref = db.collection("settings").document("dashboard_status")
-is_live = status_ref.get().to_dict().get("status", "LIVE") if status_ref.get().exists else "LIVE"
-
-# Fetch Bed Status (Very Fast)
+# --- 3. LIVE DATA ---
+# Fetch only the beds to keep it fast
 docs = db.collection("beds").stream()
 live_data = {doc.id: doc.to_dict() for doc in docs}
 
-# --- 4. HEADER & LIVE DATE ---
-st.markdown("<h1 style='text-align: center;'>Graphic Era Institute of Medical Sciences - GEIMS</h1>", unsafe_allow_html=True)
-tz = pytz.timezone('Asia/Kolkata')
-live_date_str = datetime.now(tz).strftime('%d/%m/%Y')
-
-m1, m2, m3 = st.columns(3)
-m1.metric("Live Date", live_date_str)
-m2.metric("Occupancy %", f"{round((sum(1 for b in live_data.values() if b.get('status') in ['ALLOTTED', 'BOOKED'])/len(all_bed_ids))*100) if all_bed_ids else 0}%")
-m3.metric("Available Beds", len(all_bed_ids) - sum(1 for b in live_data.values() if b.get('status') in ['ALLOTTED', 'BOOKED']))
+# --- 4. HEADER ---
+st.title("🏥 GEIMS Master Bed Tracker")
 st.divider()
 
-# --- 5. PATIENT BED REQUEST PLATFORM ---
-with st.expander("📋 MANAGE BED REQUESTS"):
-    # SUBMISSION FORM
-    with st.form("add_req", clear_on_submit=True):
+# --- 5. SIMPLE BED REQUEST FORM ---
+with st.expander("📋 ADD NEW BED REQUEST"):
+    with st.form("simple_form", clear_on_submit=True):
         c1, c2 = st.columns(2)
         p_name = c1.text_input("PATIENT NAME")
-        p_cat = c1.selectbox("CATEGORY", ["ECHS", "TPA", "CGHS CREDIT", "SELF PAY", "CGHS CASH", "ESI", "AYUSHMAN", "OTHER"])
+        p_cat = c1.selectbox("CATEGORY", ["ECHS", "TPA", "CGHS", "SELF PAY", "AYUSHMAN", "OTHER"])
         p_fr = c2.selectbox("FROM", ["CCU", "ICU", "WARD", "LR", "OTHER"])
         p_to = c2.selectbox("TO", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
         if st.form_submit_button("Submit"):
             db.collection("bed_requests").add({
-                "timestamp": datetime.now(), "name": p_name, "category": p_cat,
-                "shift_from": p_fr, "shift_to": p_to, "bed_no": ""
+                "timestamp": datetime.now(),
+                "name": p_name,
+                "category": p_cat,
+                "shift_from": p_fr,
+                "shift_to": p_to,
+                "bed_no": ""
             })
+            st.success("Submitted!")
             st.rerun()
 
-    # PAGINATED VIEW: Only load 10 most recent to prevent freezing
-    reqs = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.DESCENDING).limit(10).stream()
-    req_list = []
-    for r in reqs:
-        d = r.to_dict()
-        d['ID'] = r.id
-        req_list.append(d)
-
-    if req_list:
-        st.subheader("Edit/Remove Entry")
-        target = st.selectbox("Select Patient", [r['name'] for r in req_list])
-        if st.button("🗑️ Remove Selected"):
-            r_id = next(r['ID'] for r in req_list if r['name'] == target)
-            db.collection("bed_requests").document(r_id).delete()
-            st.rerun()
-        
-        st.dataframe(pd.DataFrame(req_list).drop(columns=['ID', 'timestamp'], errors='ignore'))
-
-# --- 6. ADMIN & SYNC ---
+# --- 6. ADMIN PANEL ---
 with st.sidebar:
     st.header("🔐 Admin")
     pwd = st.text_input("Password", type="password")
     if pwd == "Geims248001":
-        st.subheader("Sync Allotment")
-        waiting = [r for r in req_list if not r.get('bed_no')] if 'req_list' in locals() else []
-        if waiting:
-            p_sel = st.selectbox("Patient", [r['name'] for r in waiting])
-            b_val = st.text_input("Bed Number")
-            if st.button("Allot & Sync"):
-                r_id = next(r['ID'] for r in waiting if r['name'] == p_sel)
-                db.collection("bed_requests").document(r_id).update({"bed_no": b_val})
-                if b_val in all_bed_ids:
-                    db.collection("beds").document(b_val).set({"status": "ALLOTTED", "patient": p_sel})
-                st.rerun()
+        st.subheader("Manual Update")
+        sel_bed = st.selectbox("Select Bed", all_bed_ids)
+        new_stat = st.selectbox("Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE"])
+        p_label = st.text_input("Name")
+        if st.button("Update"):
+            db.collection("beds").document(sel_bed).set({"status": new_stat, "patient": p_label})
+            st.rerun()
 
-# --- 7. DASHBOARD TILES ---
-if is_live != "LIVE":
-    st.error("⚠️ OFFLINE")
-    st.stop()
+    if pwd == "GeimsAdmin99":
+        st.subheader("⚠️ System Reset")
+        if st.button("RESET ALL BEDS"):
+            for b in all_bed_ids:
+                db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
+            st.rerun()
+        if st.button("CLEAR ALL REQUESTS"):
+            # This will delete the request history to free up memory
+            for r in db.collection("bed_requests").stream():
+                r.reference.delete()
+            st.rerun()
 
-status_colors = {"VACANT": "#FFFFFF", "RESTRICTED": "#FF0000", "BOOKED": "#90EE90", "ALLOTTED": "#000000", "DISCHARGE": "#ADD8E6", "MAINTENANCE": "#E0E0E0"}
+# --- 7. BED TILES ---
+status_colors = {"VACANT": "#FFFFFF", "BOOKED": "#90EE90", "ALLOTTED": "#000000", "DISCHARGE": "#ADD8E6", "MAINTENANCE": "#E0E0E0"}
 
 for wing, beds in bed_structure.items():
     st.subheader(wing)
@@ -113,7 +91,7 @@ for wing, beds in bed_structure.items():
     for i, bed in enumerate(beds):
         data = live_data.get(bed, {"status": "VACANT", "patient": ""})
         bg = status_colors.get(data.get('status', 'VACANT'), "#FFFFFF")
-        txt = "white" if data.get('status') in ["ALLOTTED", "RESTRICTED"] else "black"
+        txt = "white" if data.get('status') == "ALLOTTED" else "black"
         with cols[i % 5]:
-            st.markdown(f'<div style="background-color:{bg}; color:{txt}; padding:5px; border:1px solid #ccc; border-radius:5px; text-align:center; height:70px;"><div style="font-size:11px; font-weight:bold;">{bed}</div><div style="font-size:10px;">{data.get("patient", "")}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="background-color:{bg}; color:{txt}; padding:5px; border:1px solid #ccc; border-radius:5px; text-align:center; height:60px;"><div style="font-size:11px; font-weight:bold;">{bed}</div><div style="font-size:10px;">{data.get("patient", "")}</div></div>', unsafe_allow_html=True)
     st.divider()
