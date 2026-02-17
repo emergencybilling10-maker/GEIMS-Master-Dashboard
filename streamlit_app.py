@@ -51,9 +51,9 @@ with st.expander("📋 MANAGE PATIENT REQUESTS"):
         st.subheader("Add New Request")
         c1, c2 = st.columns(2)
         p_name = c1.text_input("PATIENT NAME")
-        p_cat = c1.selectbox("CATEGORY", ["ECHS", "TPA", "CGHS", "SELF PAY", "AYUSHMAN", "OTHER"])
+        p_cat = c1.selectbox("CATEGORY", ["ECHS", "UPCL", "UJVN", "CGHS CASH", "BHEL", "ONGC", "TPA", "CGHS", "SELF PAY", "ICAR", "OTHER"])
         dr_name = c1.text_input("ADMITTED UNDER DOCTOR")
-        p_fr = c2.selectbox("SHIFT FROM", ["CCU", "ICU", "WARD", "LR", "OTHER"])
+        p_fr = c2.selectbox("SHIFT FROM", ["CCU", "DELUXE", "PVT", "SEMI PVT", "HDU", "OPD", "ICU", "WARD", "LR", "OTHER"])
         p_to = c2.selectbox("SHIFTING TO", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
         rem = c2.text_input("REMARK")
         if st.form_submit_button("Submit Request"):
@@ -150,7 +150,7 @@ if pwd == "GeimsAdmin99":
 
 # --- 7. VISUAL DASHBOARD ---
 if is_live != "LIVE":
-    st.error("⚠️ SYSTEM OFFLINE"); st.stop()
+    st.error("⚠️ SYSTEM OFFLINE BY ADMIN ANUJ GILL"); st.stop()
 
 st.title("🏥 Live Bed Status")
 status_colors = {"VACANT": "#FFFFFF", "BOOKED": "#90EE90", "ALLOTTED": "#000000", "DISCHARGE": "#ADD8E6", "MAINTENANCE": "#E0E0E0"}
