@@ -13,9 +13,12 @@ st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 @st.cache_resource
 def get_db():
     if "textkey" in st.secrets:
-        key_dict = json.loads(st.secrets["textkey"])
-        creds = service_account.Credentials.from_service_account_info(key_dict)
-        return firestore.Client(credentials=creds)
+        try:
+            key_dict = json.loads(st.secrets["textkey"])
+            creds = service_account.Credentials.from_service_account_info(key_dict)
+            return firestore.Client(credentials=creds)
+        except Exception as e:
+            st.error(f"Database Connection Error: {e}")
     return None
 
 db = get_db()
@@ -30,7 +33,7 @@ bed_structure = {
 }
 all_bed_ids = [b for w in bed_structure.values() for b in w]
 
-# --- 3. LIVE DATA ---
+# --- 3. LIVE DATA FETCH ---
 status_ref = db.collection("settings").document("dashboard_status")
 status_doc = status_ref.get()
 is_live = status_doc.to_dict().get("status", "LIVE") if status_doc.exists else "LIVE"
@@ -41,7 +44,7 @@ live_data = {doc.id: doc.to_dict() for doc in docs}
 # --- 4. HEADER & DATE ---
 tz = pytz.timezone('Asia/Kolkata')
 today_date = datetime.now(tz).strftime('%d/%m/%Y')
-st.markdown(f"<h1 style='text-align: center;'>🏥 GEIMS Bed Management Dashboard</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'>🏥 GEIMS Bed Management Dashboard</h1>", unsafe_allow_html=True)
 st.markdown(f"<p style='text-align: center;'><b>Current Date: {today_date}</b></p>", unsafe_allow_html=True)
 
 # --- 5. PATIENT BED REQUEST PLATFORM ---
@@ -65,6 +68,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS"):
                 st.rerun()
 
     st.divider()
+    # Fetch requests limited to last 100 for speed
     reqs_stream = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.DESCENDING).limit(100).stream()
     req_list = []
     for r in reqs_stream:
@@ -84,22 +88,23 @@ with st.expander("📋 MANAGE PATIENT REQUESTS"):
                 db.collection("bed_requests").document(r_id).update({"remark": new_val})
             st.rerun()
 
-st.divider()
+        st.divider()
         st.subheader("Shifting Request Status List")
         h_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1, 1.5])
         headers = ["S.N", "NAME", "CATEGORY", "DOCTOR", "FROM", "TO", "REMARK", "BED", "STATUS", "ACTION"]
         for col, h in zip(h_cols, headers): col.write(f"**{h}**")
         
         for idx, r in enumerate(req_list):
+            # SAFE ACCESS using .get to prevent KeyError from image_e4a97e.png
             b_no = r.get('bed_no', '')
             status = "DONE" if b_no else "WAITING"
             r_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1, 1.5])
             r_cols[0].write(idx + 1)
-            r_cols[1].write(r['name'])
-            r_cols[2].write(r['category'])
+            r_cols[1].write(r.get('name', '-'))
+            r_cols[2].write(r.get('category', '-'))
             r_cols[3].write(r.get('dr_name', '-'))
-            r_cols[4].write(r['shift_from'])
-            r_cols[5].write(r['shift_to'])
+            r_cols[4].write(r.get('shift_from', '-'))
+            r_cols[5].write(r.get('shift_to', '-'))
             r_cols[6].write(r.get('remark', '-'))
             r_cols[7].write(b_no if b_no else "-")
             color = "green" if status == "DONE" else "orange"
@@ -111,13 +116,12 @@ st.divider()
 
 # --- 6. SEPARATE SIDEBAR CONTROLS ---
 with st.sidebar:
-    # --- CONTROL 1: ALLOTMENT & MANUAL UPDATES (Geims248001) ---
     st.header("🔑 Bed Allotment Control")
-    pwd1 = st.text_input("Enter Allotment Password", type="password", key="pwd1")
+    pwd1 = st.text_input("Allotment Password", type="password", key="pwd1")
     if pwd1 == "Geims248001":
         st.info("Authorized: Manual & List Allotment")
         
-        # Allot from List
+        # Allot from List (Syncing Logic)
         waiting = [r for r in req_list if not r.get('bed_no')] if 'req_list' in locals() else []
         if waiting:
             st.subheader("Process List Allotment")
@@ -131,11 +135,8 @@ with st.sidebar:
                 st.rerun()
         
         st.divider()
-        
-        # Manual Dashboard Update
         st.subheader("Manual Bed Update")
         man_bed = st.selectbox("Select Bed ID", all_bed_ids)
-        # RESTORED: RESTRICTED STATUS
         man_stat = st.selectbox("Update Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE", "RESTRICTED"])
         man_name = st.text_input("Patient Name (Manual)")
         if st.button("Apply Manual Update"):
@@ -143,23 +144,22 @@ with st.sidebar:
             st.rerun()
 
     st.divider()
-
-    # --- CONTROL 2: MASTER ADMIN CONTROLS (GeimsAdmin99) ---
     st.header("🛡️ Master Admin Control")
-    pwd2 = st.text_input("Enter Admin Password", type="password", key="pwd2")
+    pwd2 = st.text_input("Admin Password", type="password", key="pwd2")
     if pwd2 == "GeimsAdmin99":
         st.info("Authorized: System & Data Management")
         
-        # Dashboard Status Control
+        # DASHBOARD LIVE/OFFLINE TOGGLE
         st.subheader("Dashboard Mode")
-        new_mode = st.radio("Toggle Dashboard Status", ["LIVE", "OFFLINE"], index=0 if is_live == "LIVE" else 1)
-        if st.button("Save Mode Status"):
+        new_mode = st.radio("System Status", ["LIVE", "OFFLINE"], index=0 if is_live == "LIVE" else 1)
+        if st.button("Save System Status"):
             status_ref.set({"status": new_mode})
             st.rerun()
-
-st.divider()
+        
+        st.divider()
         st.error("⚠️ DATA RESET TOOLS")
         
+        # TWO SEPARATE RESET OPTIONS
         if st.button("RESET ALL BEDS TO VACANT"):
             for b in all_bed_ids:
                 db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
@@ -169,22 +169,14 @@ st.divider()
         if st.button("CLEAR PATIENT REQUEST LIST"):
             for r in db.collection("bed_requests").stream():
                 r.reference.delete()
-            st.success("All Request History Deleted.")
+            st.success("Request History Deleted.")
             st.rerun()
 
 # --- 7. VISUAL DASHBOARD ---
 if is_live != "LIVE":
     st.error("⚠️ SYSTEM OFFLINE BY ADMIN ANUJ GILL"); st.stop()
 
-# COLOR MAPPING
-status_colors = {
-    "VACANT": "#FFFFFF", 
-    "BOOKED": "#90EE90", 
-    "ALLOTTED": "#000000", 
-    "DISCHARGE": "#ADD8E6", 
-    "MAINTENANCE": "#E0E0E0", 
-    "RESTRICTED": "#FF0000"
-}
+status_colors = {"VACANT": "#FFFFFF", "BOOKED": "#90EE90", "ALLOTTED": "#000000", "DISCHARGE": "#ADD8E6", "MAINTENANCE": "#E0E0E0", "RESTRICTED": "#FF0000"}
 
 st.title("🏥 Live Bed Status")
 for wing, beds in bed_structure.items():
@@ -192,20 +184,15 @@ for wing, beds in bed_structure.items():
     cols = st.columns(5)
     for i, bed in enumerate(beds):
         data = live_data.get(bed, {"status": "VACANT", "patient": ""})
-        # FIXED: ENSURE STATUS IS DISPLAYED
         current_status = data.get('status', 'VACANT')
-        patient_name = data.get('patient', '')
-        
         bg = status_colors.get(current_status, "#FFFFFF")
         txt = "white" if current_status in ["ALLOTTED", "RESTRICTED"] else "black"
-        
         with cols[i % 5]:
-            # FIXED MARKDOWN TO SHOW STATUS NAME
             st.markdown(f'''
                 <div style="background-color:{bg}; color:{txt}; padding:5px; border:1px solid #ccc; border-radius:5px; text-align:center; height:85px; font-size:11px;">
                     <b>{bed}</b><br>
                     <span style="font-size:10px; font-weight:bold;">{current_status}</span><br>
-                    <i style="font-size:10px;">{patient_name}</i>
+                    <i style="font-size:10px;">{data.get("patient", "")}</i>
                 </div>
             ''', unsafe_allow_html=True)
-            st.divider()
+    st.divider()
