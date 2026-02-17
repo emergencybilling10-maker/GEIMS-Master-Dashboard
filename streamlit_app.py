@@ -31,9 +31,9 @@ bed_structure = {
 all_bed_ids = [b for w in bed_structure.values() for b in w]
 
 # --- 3. LIVE DATA ---
-# Fetching status and beds
 status_ref = db.collection("settings").document("dashboard_status")
-is_live = status_ref.get().to_dict().get("status", "LIVE") if status_ref.get().exists else "LIVE"
+status_doc = status_ref.get()
+is_live = status_doc.to_dict().get("status", "LIVE") if status_doc.exists else "LIVE"
 
 docs = db.collection("beds").stream()
 live_data = {doc.id: doc.to_dict() for doc in docs}
@@ -46,7 +46,6 @@ st.markdown(f"<p style='text-align: center;'><b>Date: {today_date}</b></p>", uns
 
 # --- 5. PATIENT BED REQUEST PLATFORM ---
 with st.expander("📋 MANAGE PATIENT REQUESTS"):
-    # NEW REQUEST FORM
     with st.form("new_req", clear_on_submit=True):
         st.subheader("Add New Request")
         c1, c2 = st.columns(2)
@@ -66,15 +65,12 @@ with st.expander("📋 MANAGE PATIENT REQUESTS"):
                 st.rerun()
 
     st.divider()
-    
-    # FETCH RECENT REQUESTS
     reqs_stream = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.DESCENDING).limit(50).stream()
     req_list = []
     for r in reqs_stream:
         d = r.to_dict(); d['ID'] = r.id; req_list.append(d)
 
     if req_list:
-        # EDIT / REMOVE SECTION
         st.subheader("📝 Edit or Remove Entry")
         e_col1, e_col2 = st.columns(2)
         target = e_col1.selectbox("Select Patient", [r['name'] for r in req_list], key="edit_sel")
@@ -90,7 +86,6 @@ with st.expander("📋 MANAGE PATIENT REQUESTS"):
 
         st.divider()
         st.subheader("Patient Request List")
-        # Table Headers
         h_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1, 1.5])
         headers = ["S.N", "NAME", "CATEGORY", "DOCTOR", "FROM", "TO", "REMARK", "BED", "STATUS", "ACTION"]
         for col, h in zip(h_cols, headers): col.write(f"**{h}**")
@@ -110,24 +105,15 @@ with st.expander("📋 MANAGE PATIENT REQUESTS"):
             color = "green" if status == "DONE" else "orange"
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{status}</span>", unsafe_allow_html=True)
 
-# PRINT RECEIPT OPTION
             if status == "DONE":
-                receipt_text = f"""
-                --- GEIMS BED ALLOTMENT RECEIPT ---
-                Patient Name: {r['name']}
-                Admitted Under: {r.get('dr_name', '-')}
-                Shifting From: {r['shift_from']}
-                Shifting To: {r['shift_to']}
-                Allotted Bed No: {b_no}
-                -----------------------------------
-                Note: This receipt is valid for {today_date} only.
-                """
+                receipt_text = f"--- GEIMS BED ALLOTMENT RECEIPT ---\nPatient Name: {r['name']}\nDoctor: {r.get('dr_name', '-')}\nFrom: {r['shift_from']}\nTo: {r['shift_to']}\nBed No: {b_no}\nNote: Valid for {today_date} only."
                 r_cols[9].download_button("🖨️ Print", data=receipt_text, file_name=f"Receipt_{r['name']}.txt", key=f"print_{r['ID']}")
 
 # --- 6. ADMIN SIDEBAR ---
 with st.sidebar:
     st.header("🔐 Admin")
     pwd = st.text_input("Password", type="password")
+    
     if pwd == "Geims248001":
         st.subheader("Sync & Allot")
         waiting = [r for r in req_list if not r.get('bed_no')] if 'req_list' in locals() else []
@@ -141,20 +127,38 @@ with st.sidebar:
                     db.collection("beds").document(b_val).set({"status": "ALLOTTED", "patient": p_sel})
                 st.rerun()
 
-if pwd == "GeimsAdmin99":
-        st.subheader("⚙️ System Reset")
-        if st.button("CLEAR ALL DATA"):
-            for b in all_bed_ids: db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
-            for r in db.collection("bed_requests").stream(): r.reference.delete()
+    if pwd == "GeimsAdmin99":
+        st.subheader("⚙️ System Admin Controls")
+        
+        # RESTORED: DASHBOARD MODE CONTROL
+        new_mode = st.radio("Dashboard Mode", ["LIVE", "OFFLINE"], index=0 if is_live == "LIVE" else 1)
+        if st.button("Apply Mode"):
+            status_ref.set({"status": new_mode})
+            st.rerun()
+        
+        st.divider()
+        st.error("⚠️ DANGER ZONE: RESET OPTIONS")
+        
+        # RESTORED: TWO SEPARATE RESET OPTIONS
+        if st.button("RESET ALL DASHBOARD BEDS"):
+            for b in all_bed_ids:
+                db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
+            st.success("All Beds Reset to VACANT.")
+            st.rerun()
+            
+        if st.button("CLEAR PATIENT REQUEST LIST"):
+            for r in db.collection("bed_requests").stream():
+                r.reference.delete()
+            st.success("Request List Cleared.")
             st.rerun()
 
 # --- 7. VISUAL DASHBOARD ---
 if is_live != "LIVE":
     st.error("⚠️ SYSTEM OFFLINE BY ADMIN ANUJ GILL"); st.stop()
 
-st.title("🏥 Live Bed Status")
 status_colors = {"VACANT": "#FFFFFF", "BOOKED": "#90EE90", "ALLOTTED": "#000000", "DISCHARGE": "#ADD8E6", "MAINTENANCE": "#E0E0E0"}
 
+st.title("🏥 Live Bed Status")
 for wing, beds in bed_structure.items():
     st.subheader(wing)
     cols = st.columns(5)
