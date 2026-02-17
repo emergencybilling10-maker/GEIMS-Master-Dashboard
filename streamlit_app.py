@@ -111,7 +111,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS"):
 
 # --- 6. SEPARATE SIDEBAR CONTROLS ---
 with st.sidebar:
-    # --- CONTROL 1: ALLOTMENT & MANUAL UPDATES ---
+    # --- CONTROL 1: ALLOTMENT & MANUAL UPDATES (Geims248001) ---
     st.header("🔑 Bed Allotment Control")
     pwd1 = st.text_input("Enter Allotment Password", type="password", key="pwd1")
     if pwd1 == "Geims248001":
@@ -131,19 +131,20 @@ with st.sidebar:
                 st.rerun()
         
         st.divider()
-
-# Manual Dashboard Update
+        
+        # Manual Dashboard Update
         st.subheader("Manual Bed Update")
         man_bed = st.selectbox("Select Bed ID", all_bed_ids)
-        man_stat = st.selectbox("Update Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE"])
+        # RESTORED: RESTRICTED STATUS
+        man_stat = st.selectbox("Update Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE", "RESTRICTED"])
         man_name = st.text_input("Patient Name (Manual)")
         if st.button("Apply Manual Update"):
             db.collection("beds").document(man_bed).set({"status": man_stat, "patient": man_name})
             st.rerun()
 
-    st.divider()
+st.divider()
 
-    # --- CONTROL 2: MASTER ADMIN CONTROLS ---
+    # --- CONTROL 2: MASTER ADMIN CONTROLS (GeimsAdmin99) ---
     st.header("🛡️ Master Admin Control")
     pwd2 = st.text_input("Enter Admin Password", type="password", key="pwd2")
     if pwd2 == "GeimsAdmin99":
@@ -159,14 +160,12 @@ with st.sidebar:
         st.divider()
         st.error("⚠️ DATA RESET TOOLS")
         
-        # SEPARATE RESET OPTION 1: ALL BEDS TO VACANT
         if st.button("RESET ALL BEDS TO VACANT"):
             for b in all_bed_ids:
                 db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
             st.success("All Dashboard Beds Cleared.")
             st.rerun()
             
-        # SEPARATE RESET OPTION 2: CLEAR REQUEST LIST
         if st.button("CLEAR PATIENT REQUEST LIST"):
             for r in db.collection("bed_requests").stream():
                 r.reference.delete()
@@ -177,17 +176,36 @@ with st.sidebar:
 if is_live != "LIVE":
     st.error("⚠️ SYSTEM OFFLINE BY ADMIN ANUJ GILL"); st.stop()
 
-status_colors = {"VACANT": "#FFFFFF", "BOOKED": "#90EE90", "ALLOTTED": "#000000", "DISCHARGE": "#ADD8E6", "MAINTENANCE": "#E0E0E0"}
+# COLOR MAPPING
+status_colors = {
+    "VACANT": "#FFFFFF", 
+    "BOOKED": "#90EE90", 
+    "ALLOTTED": "#000000", 
+    "DISCHARGE": "#ADD8E6", 
+    "MAINTENANCE": "#E0E0E0", 
+    "RESTRICTED": "#FF0000"
+}
 
-
-
+st.title("🏥 Live Bed Status")
 for wing, beds in bed_structure.items():
     st.subheader(wing)
     cols = st.columns(5)
     for i, bed in enumerate(beds):
         data = live_data.get(bed, {"status": "VACANT", "patient": ""})
-        bg = status_colors.get(data.get('status', 'VACANT'), "#FFFFFF")
-        txt = "white" if data.get('status') == "ALLOTTED" else "black"
+        # FIXED: ENSURE STATUS IS DISPLAYED
+        current_status = data.get('status', 'VACANT')
+        patient_name = data.get('patient', '')
+        
+        bg = status_colors.get(current_status, "#FFFFFF")
+        txt = "white" if current_status in ["ALLOTTED", "RESTRICTED"] else "black"
+        
         with cols[i % 5]:
-            st.markdown(f'<div style="background-color:{bg}; color:{txt}; padding:5px; border:1px solid #ccc; border-radius:5px; text-align:center; height:70px; font-size:11px;"><b>{bed}</b><br>{data.get("patient", "")}</div>', unsafe_allow_html=True)
+            # FIXED MARKDOWN TO SHOW STATUS NAME
+            st.markdown(f'''
+                <div style="background-color:{bg}; color:{txt}; padding:5px; border:1px solid #ccc; border-radius:5px; text-align:center; height:85px; font-size:11px;">
+                    <b>{bed}</b><br>
+                    <span style="font-size:10px; font-weight:bold;">{current_status}</span><br>
+                    <i style="font-size:10px;">{patient_name}</i>
+                </div>
+                ''', unsafe_allow_html=True)
     st.divider()
