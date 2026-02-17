@@ -41,16 +41,16 @@ live_data = {doc.id: doc.to_dict() for doc in docs}
 # --- 4. HEADER & DATE ---
 tz = pytz.timezone('Asia/Kolkata')
 today_date = datetime.now(tz).strftime('%d/%m/%Y')
-st.markdown(f"<h1 style='text-align: center;'>🏥 GEIMS Bed Management</h1>", unsafe_allow_html=True)
-st.markdown(f"<p style='text-align: center;'><b>Date: {today_date}</b></p>", unsafe_allow_html=True)
+st.markdown(f"<h1 style='text-align: center;'>🏥 GEIMS Bed Management Dashboard</h1>", unsafe_allow_html=True)
+st.markdown(f"<p style='text-align: center;'><b>Current Date: {today_date}</b></p>", unsafe_allow_html=True)
 
 # --- 5. PATIENT BED REQUEST PLATFORM ---
 with st.expander("📋 MANAGE PATIENT REQUESTS"):
     with st.form("new_req", clear_on_submit=True):
-        st.subheader("Add New Request")
+        st.subheader("New Shifting Request Entry")
         c1, c2 = st.columns(2)
         p_name = c1.text_input("PATIENT NAME")
-        p_cat = c1.selectbox("CATEGORY", ["ECHS", "UPCL", "UJVN", "CGHS CASH", "BHEL", "ONGC", "TPA", "CGHS", "SELF PAY", "ICAR", "OTHER"])
+        p_cat = c1.selectbox("CATEGORY", ["ECHS", "UPCL", "UJVN", "CGHS CASH", "BHEL", "ONGC", "TPA", "CGHS", "SELF PAY", "ICAR", "AYUSHMAN", "OTHER"])
         dr_name = c1.text_input("ADMITTED UNDER DOCTOR")
         p_fr = c2.selectbox("SHIFT FROM", ["CCU", "DELUXE", "PVT", "SEMI PVT", "HDU", "OPD", "ICU", "WARD", "LR", "OTHER"])
         p_to = c2.selectbox("SHIFTING TO", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
@@ -65,7 +65,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS"):
                 st.rerun()
 
     st.divider()
-    reqs_stream = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.DESCENDING).limit(50).stream()
+    reqs_stream = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.DESCENDING).limit(100).stream()
     req_list = []
     for r in reqs_stream:
         d = r.to_dict(); d['ID'] = r.id; req_list.append(d)
@@ -73,10 +73,10 @@ with st.expander("📋 MANAGE PATIENT REQUESTS"):
     if req_list:
         st.subheader("📝 Edit or Remove Entry")
         e_col1, e_col2 = st.columns(2)
-        target = e_col1.selectbox("Select Patient", [r['name'] for r in req_list], key="edit_sel")
-        action = e_col1.radio("Action", ["Edit Remark", "Delete Entry"], horizontal=True)
-        new_val = e_col2.text_input("New Remark (if editing)")
-        if st.button("Apply Changes"):
+        target = e_col1.selectbox("Select Patient to Modify", [r['name'] for r in req_list], key="edit_sel")
+        action = e_col1.radio("Select Action", ["Edit Remark", "Delete Entry"], horizontal=True)
+        new_val = e_col2.text_input("New Remark (Leave blank for delete)")
+        if st.button("Confirm Modification"):
             r_id = next(r['ID'] for r in req_list if r['name'] == target)
             if action == "Delete Entry":
                 db.collection("bed_requests").document(r_id).delete()
@@ -85,7 +85,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS"):
             st.rerun()
 
         st.divider()
-        st.subheader("Patient Request List")
+        st.subheader("Shifting Request Status List")
         h_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1, 1.5])
         headers = ["S.N", "NAME", "CATEGORY", "DOCTOR", "FROM", "TO", "REMARK", "BED", "STATUS", "ACTION"]
         for col, h in zip(h_cols, headers): col.write(f"**{h}**")
@@ -106,50 +106,71 @@ with st.expander("📋 MANAGE PATIENT REQUESTS"):
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{status}</span>", unsafe_allow_html=True)
 
             if status == "DONE":
-                receipt_text = f"--- GEIMS BED ALLOTMENT RECEIPT ---\nPatient Name: {r['name']}\nDoctor: {r.get('dr_name', '-')}\nFrom: {r['shift_from']}\nTo: {r['shift_to']}\nBed No: {b_no}\nNote: Valid for {today_date} only."
-                r_cols[9].download_button("🖨️ Print", data=receipt_text, file_name=f"Receipt_{r['name']}.txt", key=f"print_{r['ID']}")
+                receipt_text = f"--- GEIMS BED ALLOTMENT RECEIPT ---\nPatient: {r['name']}\nDoctor: {r.get('dr_name', '-')}\nFrom: {r['shift_from']}\nTo: {r['shift_to']}\nBed No: {b_no}\nNote: Valid for {today_date} only."
+                r_cols[9].download_button("🖨️ Receipt", data=receipt_text, file_name=f"Receipt_{r['name']}.txt", key=f"print_{r['ID']}")
 
-# --- 6. ADMIN SIDEBAR ---
+# --- 6. SEPARATE SIDEBAR CONTROLS ---
 with st.sidebar:
-    st.header("🔐 Admin")
-    pwd = st.text_input("Password", type="password")
-    
-    if pwd == "Geims248001":
-        st.subheader("Sync & Allot")
+    # --- CONTROL 1: ALLOTMENT & MANUAL UPDATES ---
+    st.header("🔑 Bed Allotment Control")
+    pwd1 = st.text_input("Enter Allotment Password", type="password", key="pwd1")
+    if pwd1 == "Geims248001":
+        st.info("Authorized: Manual & List Allotment")
+        
+        # Allot from List
         waiting = [r for r in req_list if not r.get('bed_no')] if 'req_list' in locals() else []
         if waiting:
+            st.subheader("Process List Allotment")
             p_sel = st.selectbox("Select Patient", [r['name'] for r in waiting])
-            b_val = st.text_input("Allot Bed No.")
+            b_val = st.text_input("Assign Bed No.")
             if st.button("Finalize Allotment"):
                 r_id = next(r['ID'] for r in waiting if r['name'] == p_sel)
                 db.collection("bed_requests").document(r_id).update({"bed_no": b_val})
                 if b_val in all_bed_ids:
                     db.collection("beds").document(b_val).set({"status": "ALLOTTED", "patient": p_sel})
                 st.rerun()
-
-    if pwd == "GeimsAdmin99":
-        st.subheader("⚙️ System Admin Controls")
         
-        # RESTORED: DASHBOARD MODE CONTROL
-        new_mode = st.radio("Dashboard Mode", ["LIVE", "OFFLINE"], index=0 if is_live == "LIVE" else 1)
-        if st.button("Apply Mode"):
+        st.divider()
+
+# Manual Dashboard Update
+        st.subheader("Manual Bed Update")
+        man_bed = st.selectbox("Select Bed ID", all_bed_ids)
+        man_stat = st.selectbox("Update Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE"])
+        man_name = st.text_input("Patient Name (Manual)")
+        if st.button("Apply Manual Update"):
+            db.collection("beds").document(man_bed).set({"status": man_stat, "patient": man_name})
+            st.rerun()
+
+    st.divider()
+
+    # --- CONTROL 2: MASTER ADMIN CONTROLS ---
+    st.header("🛡️ Master Admin Control")
+    pwd2 = st.text_input("Enter Admin Password", type="password", key="pwd2")
+    if pwd2 == "GeimsAdmin99":
+        st.info("Authorized: System & Data Management")
+        
+        # Dashboard Status Control
+        st.subheader("Dashboard Mode")
+        new_mode = st.radio("Toggle Dashboard Status", ["LIVE", "OFFLINE"], index=0 if is_live == "LIVE" else 1)
+        if st.button("Save Mode Status"):
             status_ref.set({"status": new_mode})
             st.rerun()
         
         st.divider()
-        st.error("⚠️ DANGER ZONE: RESET OPTIONS")
+        st.error("⚠️ DATA RESET TOOLS")
         
-        # RESTORED: TWO SEPARATE RESET OPTIONS
-        if st.button("RESET ALL DASHBOARD BEDS"):
+        # SEPARATE RESET OPTION 1: ALL BEDS TO VACANT
+        if st.button("RESET ALL BEDS TO VACANT"):
             for b in all_bed_ids:
                 db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
-            st.success("All Beds Reset to VACANT.")
+            st.success("All Dashboard Beds Cleared.")
             st.rerun()
             
+        # SEPARATE RESET OPTION 2: CLEAR REQUEST LIST
         if st.button("CLEAR PATIENT REQUEST LIST"):
             for r in db.collection("bed_requests").stream():
                 r.reference.delete()
-            st.success("Request List Cleared.")
+            st.success("All Request History Deleted.")
             st.rerun()
 
 # --- 7. VISUAL DASHBOARD ---
@@ -158,7 +179,8 @@ if is_live != "LIVE":
 
 status_colors = {"VACANT": "#FFFFFF", "BOOKED": "#90EE90", "ALLOTTED": "#000000", "DISCHARGE": "#ADD8E6", "MAINTENANCE": "#E0E0E0"}
 
-st.title("🏥 Live Bed Status")
+
+
 for wing, beds in bed_structure.items():
     st.subheader(wing)
     cols = st.columns(5)
@@ -168,3 +190,4 @@ for wing, beds in bed_structure.items():
         txt = "white" if data.get('status') == "ALLOTTED" else "black"
         with cols[i % 5]:
             st.markdown(f'<div style="background-color:{bg}; color:{txt}; padding:5px; border:1px solid #ccc; border-radius:5px; text-align:center; height:70px; font-size:11px;"><b>{bed}</b><br>{data.get("patient", "")}</div>', unsafe_allow_html=True)
+    st.divider()
