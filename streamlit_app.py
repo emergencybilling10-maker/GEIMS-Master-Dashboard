@@ -84,7 +84,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS"):
                 db.collection("bed_requests").document(r_id).update({"remark": new_val})
             st.rerun()
 
-        st.divider()
+st.divider()
         st.subheader("Shifting Request Status List")
         h_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1, 1.5])
         headers = ["S.N", "NAME", "CATEGORY", "DOCTOR", "FROM", "TO", "REMARK", "BED", "STATUS", "ACTION"]
@@ -142,7 +142,7 @@ with st.sidebar:
             db.collection("beds").document(man_bed).set({"status": man_stat, "patient": man_name})
             st.rerun()
 
-st.divider()
+    st.divider()
 
     # --- CONTROL 2: MASTER ADMIN CONTROLS (GeimsAdmin99) ---
     st.header("🛡️ Master Admin Control")
@@ -156,8 +156,8 @@ st.divider()
         if st.button("Save Mode Status"):
             status_ref.set({"status": new_mode})
             st.rerun()
-        
-        st.divider()
+
+st.divider()
         st.error("⚠️ DATA RESET TOOLS")
         
         if st.button("RESET ALL BEDS TO VACANT"):
@@ -207,5 +207,5 @@ for wing, beds in bed_structure.items():
                     <span style="font-size:10px; font-weight:bold;">{current_status}</span><br>
                     <i style="font-size:10px;">{patient_name}</i>
                 </div>
-                ''', unsafe_allow_html=True)
-    st.divider()
+            ''', unsafe_allow_html=True)
+            st.divider()
