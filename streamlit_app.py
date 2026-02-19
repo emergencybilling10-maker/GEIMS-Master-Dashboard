@@ -48,7 +48,7 @@ st.markdown("<h1 style='text-align: center;'>🏥 GEIMS Bed Management Dashboard
 st.markdown(f"<p style='text-align: center;'><b>Current Date: {today_date}</b></p>", unsafe_allow_html=True)
 
 # --- 5. PATIENT BED REQUEST PLATFORM ---
-with st.expander("📋 MANAGE PATIENT REQUESTS"):
+with st.expander("📋 MANAGE PATIENT REQUESTS OF ADMISSION AND SHIFTING"):
     with st.form("new_req", clear_on_submit=True):
         st.subheader("New Shifting Request Entry")
         c1, c2 = st.columns(2)
