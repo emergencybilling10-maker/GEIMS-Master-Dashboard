@@ -162,4 +162,4 @@ with st.sidebar:
             for r in db.collection("bed_requests").stream(): r.reference.delete()
             st.rerun()
     else:
-        st.info("🔒 Visual Bed Status is restricted to Admins. Enter password to unlock.")
+        st.info("🔒 Visual Bed Status is restricted to Admin A nuj Gill. Enter password to unlock.")
