@@ -48,7 +48,7 @@ st.markdown("<h1 style='text-align: center;'>🏥 GEIMS Bed Management Dashboard
 st.markdown(f"<p style='text-align: center;'><b>Current Date: {today_date}</b></p>", unsafe_allow_html=True)
 
 # --- 5. PATIENT BED REQUEST PLATFORM ---
-with st.expander("📋 MANAGE PATIENT REQUESTS OF ADMISSION AND SHIFTING"):
+with st.expander("📋 MANAGE PATIENT REQUESTS"):
     with st.form("new_req", clear_on_submit=True):
         st.subheader("New Shifting Request Entry")
         c1, c2 = st.columns(2)
@@ -63,7 +63,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS OF ADMISSION AND SHIFTING"):
                 db.collection("bed_requests").add({
                     "timestamp": datetime.now(), "name": p_name, "category": p_cat,
                     "dr_name": dr_name, "shift_from": p_fr, "shift_to": p_to, 
-                    "remark": rem, "bed_no": "", "date": today_date
+                    "remark": rem, "bed_no": "", "status": "WAITING", "date": today_date
                 })
                 st.rerun()
 
@@ -74,15 +74,19 @@ with st.expander("📋 MANAGE PATIENT REQUESTS OF ADMISSION AND SHIFTING"):
         d = r.to_dict(); d['ID'] = r.id; req_list.append(d)
 
     if req_list:
-        st.subheader("📝 Edit or Remove Entry")
+        st.subheader("📝 Edit, Cancel or Remove Entry")
         e_col1, e_col2 = st.columns(2)
         target = e_col1.selectbox("Select Patient to Modify", [r['name'] for r in req_list], key="edit_sel")
-        action = e_col1.radio("Select Action", ["Edit Remark", "Delete Entry"], horizontal=True)
-        new_val = e_col2.text_input("New Remark (Leave blank for delete)")
+        # ADDED CANCELLED OPTION IN THE ACTIONS
+        action = e_col1.radio("Select Action", ["Edit Remark", "Mark as CANCELLED", "Delete Entry"], horizontal=True)
+        new_val = e_col2.text_input("New Remark (Leave blank for delete/cancel)")
+        
         if st.button("Confirm Modification"):
             r_id = next(r['ID'] for r in req_list if r['name'] == target)
             if action == "Delete Entry":
                 db.collection("bed_requests").document(r_id).delete()
+            elif action == "Mark as CANCELLED":
+                db.collection("bed_requests").document(r_id).update({"status": "CANCELLED", "bed_no": ""})
             else:
                 db.collection("bed_requests").document(r_id).update({"remark": new_val})
             st.rerun()
@@ -95,7 +99,11 @@ with st.expander("📋 MANAGE PATIENT REQUESTS OF ADMISSION AND SHIFTING"):
         
         for idx, r in enumerate(req_list):
             b_no = r.get('bed_no', '')
-            status = "DONE" if b_no else "WAITING"
+            # LOGIC FOR CANCELLED STATUS DISPLAY
+            current_status = r.get('status', 'WAITING')
+            if b_no:
+                current_status = "DONE"
+            
             r_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1, 1.5])
             r_cols[0].write(idx + 1)
             r_cols[1].write(r.get('name', '-'))
@@ -105,30 +113,37 @@ with st.expander("📋 MANAGE PATIENT REQUESTS OF ADMISSION AND SHIFTING"):
             r_cols[5].write(r.get('shift_to', '-'))
             r_cols[6].write(r.get('remark', '-'))
             r_cols[7].write(b_no if b_no else "-")
-            color = "green" if status == "DONE" else "orange"
-            r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{status}</span>", unsafe_allow_html=True)
+            
+            # COLOR CODING FOR CANCELLED STATUS
+            if current_status == "DONE":
+                color = "green"
+            elif current_status == "CANCELLED":
+                color = "red"
+            else:
+                color = "orange"
+                
+            r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{current_status}</span>", unsafe_allow_html=True)
 
-            if status == "DONE":
+            if current_status == "DONE":
                 receipt_text = f"--- GEIMS BED ALLOTMENT RECEIPT ---\nPatient: {r['name']}\nDoctor: {r.get('dr_name', '-')}\nFrom: {r['shift_from']}\nTo: {r['shift_to']}\nBed No: {b_no}\nNote: Valid for {today_date} only."
                 r_cols[9].download_button("🖨️ Receipt", data=receipt_text, file_name=f"Receipt_{r['name']}.txt", key=f"print_{r['ID']}")
 
 # --- 6. SEPARATE SIDEBAR CONTROLS ---
-show_dashboard = False # Default hidden
+show_dashboard = False 
 
 with st.sidebar:
     st.header("🔑 Bed Allotment Control")
     pwd1 = st.text_input("Allotment Password", type="password", key="pwd1")
     if pwd1 == "Geims248001":
         st.info("Authorized: Manual & List Allotment")
-        # Allotment tools remain available here, but dashboard remains hidden
-        waiting = [r for r in req_list if not r.get('bed_no')] if 'req_list' in locals() else []
+        waiting = [r for r in req_list if not r.get('bed_no') and r.get('status') != "CANCELLED"] if 'req_list' in locals() else []
         if waiting:
             st.subheader("Process List Allotment")
             p_sel = st.selectbox("Select Patient", [r['name'] for r in waiting])
             b_val = st.text_input("Assign Bed No.")
             if st.button("Finalize Allotment"):
                 r_id = next(r['ID'] for r in waiting if r['name'] == p_sel)
-                db.collection("bed_requests").document(r_id).update({"bed_no": b_val})
+                db.collection("bed_requests").document(r_id).update({"bed_no": b_val, "status": "DONE"})
                 if b_val in all_bed_ids:
                     db.collection("beds").document(b_val).set({"status": "ALLOTTED", "patient": p_sel})
                 st.rerun()
@@ -147,7 +162,7 @@ with st.sidebar:
     pwd2 = st.text_input("Admin Password", type="password", key="pwd2")
     if pwd2 == "GeimsAdmin99":
         st.info("Authorized: Master Admin Access")
-        show_dashboard = True # ONLY Admin can see the visual beds
+        show_dashboard = True 
         
         st.subheader("Dashboard Mode")
         new_mode = st.radio("System Status", ["LIVE", "OFFLINE"], index=0 if is_live == "LIVE" else 1)
