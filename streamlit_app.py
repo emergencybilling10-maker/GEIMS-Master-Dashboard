@@ -182,4 +182,4 @@ if is_authenticated:
                 ''', unsafe_allow_html=True)
         st.divider()
 else:
-    st.info("🔒 Visual Bed Dashboard is locked. Enter password in sidebar to view bed status.")
+    st.info("🔒 Visual Bed Dashboard is locked by admin Anuj Gill. Enter password in sidebar to view bed status.")
