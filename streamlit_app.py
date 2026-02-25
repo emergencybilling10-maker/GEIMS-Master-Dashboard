@@ -5,7 +5,6 @@ from google.oauth2 import service_account
 import json
 from datetime import datetime
 import pytz
-from urllib.parse import quote
 
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
@@ -69,6 +68,8 @@ with st.expander("📋 MANAGE PATIENT REQUESTS"):
                 st.rerun()
 
     st.divider()
+    
+    # FETCH REQUESTS
     reqs_stream = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.DESCENDING).limit(100).stream()
     req_list = []
     for r in reqs_stream:
@@ -127,48 +128,37 @@ with st.expander("📋 MANAGE PATIENT REQUESTS"):
             color = "green" if current_status == "DONE" else ("red" if current_status == "CANCELLED" else "orange")
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{current_status}</span>", unsafe_allow_html=True)
 
-            # --- WHATSAPP SHARING LOGIC ---
-            wa_msg = f"*GEIMS Shifting Update*\nPatient: {r.get('name')}\nStatus: {current_status}\nFrom: {r.get('shift_from')}\nTo: {r.get('shift_to')}\nBed: {b_no if b_no else 'Pending'}"
-            wa_url = f"https://wa.me/?text={quote(wa_msg)}"
-            
-            act_col = r_cols[9]
             if current_status == "DONE":
                 receipt_text = f"--- GEIMS BED ALLOTMENT RECEIPT ---\nPatient: {r['name']}\nBed No: {b_no}\nDate: {today_date}"
-                act_col.download_button("🖨️", data=receipt_text, file_name=f"Receipt_{r['name']}.txt", key=f"print_{r['ID']}")
-            
-            act_col.markdown(f'''<a href="{wa_url}" target="_blank"><button style="background-color:#25D366; color:white; border:none; border-radius:4px; padding:2px 5px; cursor:pointer;">📲 WA</button></a>''', unsafe_allow_html=True)
+                r_cols[9].download_button("🖨️ Receipt", data=receipt_text, file_name=f"Receipt_{r['name']}.txt", key=f"print_{r['ID']}")
 
 # --- 6. UNIFIED ADMIN SIDEBAR CONTROL ---
 show_dashboard = False 
 
 with st.sidebar:
     st.header("🛡️ Admin Control Panel")
+    # MERGED INTO ONE PASSWORD SECTION
     admin_pwd = st.text_input("Enter Admin Password", type="password")
     
     if admin_pwd == "GeimsAdmin99":
         st.success("Authorized: Full Access")
         show_dashboard = True 
         
+        # Bed Allotment Tools (Previously separate)
         st.divider()
         st.subheader("🔑 Allotment Tools")
         waiting = [r for r in req_list if not r.get('bed_no') and r.get('status') != "CANCELLED"] if 'req_list' in locals() else []
         if waiting:
             p_sel = st.selectbox("Assign Bed to Patient", [r['name'] for r in waiting])
             b_val = st.text_input("Enter Bed No.")
-            ward_no = st.text_input("Ward WhatsApp (Optional)", placeholder="91XXXXXXXXXX")
-            
             if st.button("Finalize Allotment"):
                 r_id = next(r['ID'] for r in waiting if r['name'] == p_sel)
                 db.collection("bed_requests").document(r_id).update({"bed_no": b_val, "status": "DONE"})
                 if b_val in all_bed_ids:
                     db.collection("beds").document(b_val).set({"status": "ALLOTTED", "patient": p_sel})
-                
-                # Notification trigger
-                if ward_no:
-                    msg = f"🏥 *GEIMS ALLOTMENT ALERT*\nPatient: {p_sel}\nBed: {b_val}\nConfirmed by M.O.D."
-                    st.markdown(f'<a href="https://wa.me/{ward_no}?text={quote(msg)}" target="_blank">📲 Click to Notify Ward</a>', unsafe_allow_html=True)
                 st.rerun()
 
+        # Manual Status Update (Moved inside)
         st.divider()
         st.subheader("⚙️ Manual Bed Update")
         man_bed = st.selectbox("Select Bed ID", all_bed_ids)
@@ -178,6 +168,7 @@ with st.sidebar:
             db.collection("beds").document(man_bed).set({"status": man_stat, "patient": man_name})
             st.rerun()
         
+        # Dashboard System Controls
         st.divider()
         st.subheader("🖥️ System Status")
         new_mode = st.radio("Dashboard Mode", ["LIVE", "OFFLINE"], index=0 if is_live == "LIVE" else 1)
