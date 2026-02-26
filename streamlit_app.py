@@ -38,10 +38,8 @@ if db:
     status_ref = db.collection("settings").document("dashboard_status")
     status_doc = status_ref.get()
     is_live = status_doc.to_dict().get("status", "LIVE") if status_doc.exists else "LIVE"
-
     docs = db.collection("beds").stream()
     live_data = {doc.id: doc.to_dict() for doc in docs}
-
     reqs_stream = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.DESCENDING).limit(50).stream()
     req_list = []
     for r in reqs_stream:
@@ -90,12 +88,18 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
 
     if req_list:
         st.divider()
+        # SEARCH BAR INTEGRATION
+        search_query = st.text_input("🔍 Search Patient Name", "").lower()
+        
         st.subheader("Shifting Request Status List")
         h_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1, 1.5])
         headers = ["S.N", "NAME", "CATEGORY", "DOCTOR", "FROM", "TO", "REMARK", "BED", "STATUS", "ACTION"]
         for col, h in zip(h_cols, headers): col.write(f"**{h}**")
         
         for idx, r in enumerate(req_list):
+            if search_query and search_query not in r.get('name', '').lower():
+                continue
+
             b_no = r.get('bed_no', '')
             status = r.get('status', 'WAITING')
             if b_no: status = "DONE"
@@ -114,11 +118,10 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{status}</span>", unsafe_allow_html=True)
 
             if status == "DONE":
-                # PROFESSIONAL A5 RECEIPT FORMAT
+                # UPDATED RECEIPT FORMAT
                 receipt_text = f"""
 ====================================
-      GEIMS BED ALLOTMENT SLIP
-      (A5 DOCUMENT FORMAT)
+      G.E.I.M.S (Bed Management)
 ====================================
 DATE: {today_date}
 PATIENT NAME: {r['name']}
@@ -133,11 +136,10 @@ ALLOTTED BED:  {b_no}
 REMARK: {r.get('remark', '-')}
 ------------------------------------
 
-Authorized by: GEIMS Master Admin
-Note: This slip is valid for 2 hours.
+Note: This slip is valid for today's only.
 ====================================
 """
-                r_cols[9].download_button("🖨️ Receipt (A5)", data=receipt_text, file_name=f"GEIMS_Receipt_{r['name']}.txt", key=f"rec_{r['ID']}")
+                r_cols[9].download_button("🖨️ Receipt", data=receipt_text, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
 
 # --- 6. UNIFIED ADMIN SIDEBAR CONTROL ---
 show_dashboard = False 
