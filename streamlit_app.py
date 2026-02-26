@@ -33,9 +33,8 @@ bed_structure = {
 }
 all_bed_ids = [b for w in bed_structure.values() for b in w]
 
-# --- 3. LIVE DATA FETCH (WITH ERROR HANDLING) ---
+# --- 3. LIVE DATA FETCH ---
 if db:
-    # Use cached or efficient streams to prevent 429 errors
     status_ref = db.collection("settings").document("dashboard_status")
     status_doc = status_ref.get()
     is_live = status_doc.to_dict().get("status", "LIVE") if status_doc.exists else "LIVE"
@@ -43,15 +42,12 @@ if db:
     docs = db.collection("beds").stream()
     live_data = {doc.id: doc.to_dict() for doc in docs}
 
-    # LIMIT FETCH to 50 items to prevent timeouts
     reqs_stream = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.DESCENDING).limit(50).stream()
     req_list = []
     for r in reqs_stream:
-        d = r.to_dict()
-        d['ID'] = r.id
-        req_list.append(d)
+        d = r.to_dict(); d['ID'] = r.id; req_list.append(d)
 else:
-    st.error("Could not connect to database. Check your textkey secrets.")
+    st.error("Database connection failed.")
     st.stop()
 
 # --- 4. HEADER & DATE ---
@@ -62,7 +58,7 @@ st.markdown(f"<p style='text-align: center;'><b>Current Date: {today_date}</b></
 
 # --- 5. PATIENT BED REQUEST PLATFORM ---
 with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
-    # --- WARD STATISTICS BAR ---
+    # WARD STATISTICS BAR
     pending_count = sum(1 for r in req_list if r.get('status') == "WAITING" and not r.get('bed_no'))
     allotted_count = sum(1 for r in req_list if r.get('bed_no') != "")
     cancelled_count = sum(1 for r in req_list if r.get('status') == "CANCELLED")
@@ -86,7 +82,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         if st.form_submit_button("Submit Request"):
             if p_name:
                 db.collection("bed_requests").add({
-                    "timestamp": datetime.now(), "name": p_name, "category": p_cat,
+                    "timestamp": datetime.now(tz), "name": p_name, "category": p_cat,
                     "dr_name": dr_name, "shift_from": p_fr, "shift_to": p_to, 
                     "remark": rem, "bed_no": "", "status": "WAITING", "date": today_date
                 })
@@ -101,8 +97,8 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         
         for idx, r in enumerate(req_list):
             b_no = r.get('bed_no', '')
-            current_status = r.get('status', 'WAITING')
-            if b_no: current_status = "DONE"
+            status = r.get('status', 'WAITING')
+            if b_no: status = "DONE"
             
             r_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1, 1.5])
             r_cols[0].write(idx + 1)
@@ -114,12 +110,34 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             r_cols[6].write(r.get('remark', '-'))
             r_cols[7].write(b_no if b_no else "-")
             
-            color = "green" if current_status == "DONE" else ("red" if current_status == "CANCELLED" else "orange")
-            r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{current_status}</span>", unsafe_allow_html=True)
+            color = "green" if status == "DONE" else ("red" if status == "CANCELLED" else "orange")
+            r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{status}</span>", unsafe_allow_html=True)
 
-            if current_status == "DONE":
-                receipt_text = f"--- GEIMS BED ALLOTMENT RECEIPT ---\nPatient: {r['name']}\nBed No: {b_no}\nDate: {today_date}"
-                r_cols[9].download_button("🖨️ Receipt", data=receipt_text, file_name=f"Receipt_{r['name']}.txt", key=f"print_{r['ID']}")
+            if status == "DONE":
+                # PROFESSIONAL A5 RECEIPT FORMAT
+                receipt_text = f"""
+====================================
+      GEIMS BED ALLOTMENT SLIP
+      (A5 DOCUMENT FORMAT)
+====================================
+DATE: {today_date}
+PATIENT NAME: {r['name']}
+CATEGORY: {r.get('category', '-')}
+ADMITTED UNDER: {r.get('dr_name', '-')}
+
+------------------------------------
+SHIFTING FROM: {r.get('shift_from', '-')}
+SHIFTING TO:   {r.get('shift_to', '-')}
+------------------------------------
+ALLOTTED BED:  {b_no}
+REMARK: {r.get('remark', '-')}
+------------------------------------
+
+Authorized by: GEIMS Master Admin
+Note: This slip is valid for 2 hours.
+====================================
+"""
+                r_cols[9].download_button("🖨️ Receipt (A5)", data=receipt_text, file_name=f"GEIMS_Receipt_{r['name']}.txt", key=f"rec_{r['ID']}")
 
 # --- 6. UNIFIED ADMIN SIDEBAR CONTROL ---
 show_dashboard = False 
@@ -140,12 +158,9 @@ with st.sidebar:
             new_val = st.text_input("New Remark (if editing)")
             if st.button("Confirm Action"):
                 r_id = next(r['ID'] for r in req_list if r['name'] == target)
-                if action == "Delete Entry":
-                    db.collection("bed_requests").document(r_id).delete()
-                elif action == "Mark as CANCELLED":
-                    db.collection("bed_requests").document(r_id).update({"status": "CANCELLED", "bed_no": ""})
-                else:
-                    db.collection("bed_requests").document(r_id).update({"remark": new_val})
+                if action == "Delete Entry": db.collection("bed_requests").document(r_id).delete()
+                elif action == "Mark as CANCELLED": db.collection("bed_requests").document(r_id).update({"status": "CANCELLED", "bed_no": ""})
+                else: db.collection("bed_requests").document(r_id).update({"remark": new_val})
                 st.rerun()
         
         # Allotment Tools
@@ -171,48 +186,28 @@ with st.sidebar:
         if st.button("Apply Manual Update"):
             db.collection("beds").document(man_bed).set({"status": man_stat, "patient": man_name})
             st.rerun()
-        
-        # System Reset
-        st.divider()
-        st.subheader("🖥️ Dashboard Mode")
-        new_mode = st.radio("Dashboard Mode", ["LIVE", "OFFLINE"], index=0 if is_live == "LIVE" else 1)
-        if st.button("Save Mode"):
-            status_ref.set({"status": new_mode})
-            st.rerun()
 
         st.divider()
-        st.error("⚠️ DATA RESET")
         if st.button("RESET ALL BEDS"):
-            for b in all_bed_ids:
-                db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
+            for b in all_bed_ids: db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
             st.rerun()
     elif admin_pwd != "":
         st.error("Incorrect Password")
 
 # --- 7. VISUAL DASHBOARD ---
 if show_dashboard:
-    if is_live != "LIVE":
-        st.error("⚠️ SYSTEM OFFLINE BY ADMIN ANUJ GILL"); st.stop()
-
+    if is_live != "LIVE": st.error("⚠️ SYSTEM OFFLINE"); st.stop()
     status_colors = {"VACANT": "#FFFFFF", "BOOKED": "#90EE90", "ALLOTTED": "#000000", "DISCHARGE": "#ADD8E6", "MAINTENANCE": "#E0E0E0", "RESTRICTED": "#FF0000"}
-
     st.title("🏥 Live Bed Status")
     for wing, beds in bed_structure.items():
         st.subheader(wing)
         cols = st.columns(5)
         for i, bed in enumerate(beds):
             data = live_data.get(bed, {"status": "VACANT", "patient": ""})
-            current_status = data.get('status', 'VACANT')
-            bg = status_colors.get(current_status, "#FFFFFF")
-            txt = "white" if current_status in ["ALLOTTED", "RESTRICTED"] else "black"
+            bg = status_colors.get(data.get('status', 'VACANT'), "#FFFFFF")
+            txt = "white" if data.get('status') in ["ALLOTTED", "RESTRICTED"] else "black"
             with cols[i % 5]:
-                st.markdown(f'''
-                    <div style="background-color:{bg}; color:{txt}; padding:5px; border:1px solid #ccc; border-radius:5px; text-align:center; height:85px; font-size:11px;">
-                        <b>{bed}</b><br>
-                        <span style="font-size:10px; font-weight:bold;">{current_status}</span><br>
-                        <i style="font-size:10px;">{data.get("patient", "")}</i>
-                    </div>
-                ''', unsafe_allow_html=True)
+                st.markdown(f'<div style="background-color:{bg}; color:{txt}; padding:5px; border:1px solid #ccc; border-radius:5px; text-align:center; height:85px; font-size:11px;"><b>{bed}</b><br><span style="font-size:10px; font-weight:bold;">{data.get("status", "VACANT")}</span><br><i style="font-size:10px;">{data.get("patient", "")}</i></div>', unsafe_allow_html=True)
         st.divider()
 else:
     st.info("🔒 Visual Bed Dashboard restricted. Enter Admin Password in the sidebar.")
