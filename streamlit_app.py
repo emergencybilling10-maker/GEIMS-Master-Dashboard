@@ -42,7 +42,8 @@ if db:
     docs = db.collection("beds").stream()
     live_data = {doc.id: doc.to_dict() for doc in docs}
 
-    reqs_stream = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.DESCENDING).limit(50).stream()
+    # UPDATED: Changed direction to ASCENDING for chronological order (Oldest at Top)
+    reqs_stream = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.ASCENDING).limit(50).stream()
     req_list = []
     for r in reqs_stream:
         d = r.to_dict(); d['ID'] = r.id; req_list.append(d)
@@ -90,7 +91,6 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
 
     if req_list:
         st.divider()
-        # SEARCH BAR
         search_query = st.text_input("🔍 Search Patient Name", "").lower()
         
         st.subheader("Shifting Request Status List")
@@ -120,7 +120,6 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{status}</span>", unsafe_allow_html=True)
 
             if status == "DONE":
-                # UPDATED A5 RECEIPT FORMAT
                 receipt_text = f"""
 ====================================
       G.E.I.M.S (Bed Management)
@@ -191,9 +190,15 @@ with st.sidebar:
             db.collection("beds").document(man_bed).set({"status": man_stat, "patient": man_name})
             st.rerun()
 
+        # THE RESET BUTTON
         st.divider()
+        st.error("⚠️ DATA RESET TOOLS")
         if st.button("RESET ALL BEDS"):
             for b in all_bed_ids: db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
+            st.rerun()
+            
+        if st.button("CLEAR PATIENT REQUEST LIST"):
+            for r in db.collection("bed_requests").stream(): r.reference.delete()
             st.rerun()
     elif admin_pwd != "":
         st.error("Incorrect Password")
