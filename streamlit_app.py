@@ -1,16 +1,15 @@
-import streamlit as st
+gemini this is nice Shift Handover Report (PDF). import streamlit as st
 import pandas as pd
 from google.cloud import firestore
 from google.oauth2 import service_account
 import json
 from datetime import datetime
 import pytz
-import requests  # Added for API-based mobile notifications
 
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- 1. SECURE DATABASE CONNECTION ---
+# --- 1. SECURE DATABASE CONNECTION (OPTIMIZED) ---
 @st.cache_resource
 def get_db():
     if "textkey" in st.secrets:
@@ -23,16 +22,6 @@ def get_db():
     return None
 
 db = get_db()
-
-# --- MOBILE ALERT LOGIC ---
-def send_mobile_notification(patient_name, ward):
-    """
-    Simulates sending an alert to your mobile number.
-    To make this live, you can connect an API like Twilio or ClickSend.
-    """
-    phone_number = "9528830063"
-    # Placeholder for the API call logic
-    st.toast(f"📱 Alert sent to {phone_number}: New request for {patient_name}.", icon="🔔")
 
 # --- 2. BED STRUCTURE ---
 bed_structure = {
@@ -53,7 +42,7 @@ if db:
     docs = db.collection("beds").stream()
     live_data = {doc.id: doc.to_dict() for doc in docs}
 
-    # Chronological: Oldest at top
+    # UPDATED: Changed direction to ASCENDING for chronological order (Oldest at Top)
     reqs_stream = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.ASCENDING).limit(50).stream()
     req_list = []
     for r in reqs_stream:
@@ -70,6 +59,7 @@ st.markdown(f"<p style='text-align: center;'><b>Current Date: {today_date}</b></
 
 # --- 5. PATIENT BED REQUEST PLATFORM ---
 with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
+    # WARD STATISTICS BAR
     pending_count = sum(1 for r in req_list if r.get('status') == "WAITING" and not r.get('bed_no'))
     allotted_count = sum(1 for r in req_list if r.get('bed_no') != "")
     cancelled_count = sum(1 for r in req_list if r.get('status') == "CANCELLED")
@@ -90,7 +80,6 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         p_fr = c2.selectbox("SHIFT FROM", ["CCU", "DELUXE", "PVT", "SEMI PVT", "HDU", "OPD", "ICU", "WARD", "LR", "OTHER"])
         p_to = c2.selectbox("SHIFTING TO", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
         rem = c2.text_input("REMARK")
-        
         if st.form_submit_button("Submit Request"):
             if p_name:
                 db.collection("bed_requests").add({
@@ -98,8 +87,6 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                     "dr_name": dr_name, "shift_from": p_fr, "shift_to": p_to, 
                     "remark": rem, "bed_no": "", "status": "WAITING", "date": today_date
                 })
-                # AUTO-ALERT TRIGGER
-                send_mobile_notification(p_name, p_to)
                 st.rerun()
 
     if req_list:
@@ -112,7 +99,9 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         for col, h in zip(h_cols, headers): col.write(f"**{h}**")
         
         for idx, r in enumerate(req_list):
-            if search_query and search_query not in r.get('name', '').lower(): continue
+            if search_query and search_query not in r.get('name', '').lower():
+                continue
+                
             b_no = r.get('bed_no', '')
             status = r.get('status', 'WAITING')
             if b_no: status = "DONE"
@@ -131,8 +120,27 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{status}</span>", unsafe_allow_html=True)
 
             if status == "DONE":
-                receipt_text = f"====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date}\nPATIENT NAME: {r['name']}\nCATEGORY: {r.get('category', '-')}\nADMITTED UNDER: {r.get('dr_name', '-')}\n\n------------------------------------\nSHIFTING FROM: {r.get('shift_from', '-')}\nSHIFTING TO:   {r.get('shift_to', '-')}\n------------------------------------\nALLOTTED BED:  {b_no}\n------------------------------------\n\nNote: This slip is valid for today's only.\n===================================="
-                r_cols[9].download_button("🖨️ Receipt", data=receipt_text, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
+                receipt_text = f"""
+====================================
+      G.E.I.M.S (Bed Management)
+      BED ALLOTMENT SLIP
+====================================
+DATE: {today_date}
+PATIENT NAME: {r['name']}
+CATEGORY: {r.get('category', '-')}
+ADMITTED UNDER: {r.get('dr_name', '-')}
+
+------------------------------------
+SHIFTING FROM: {r.get('shift_from', '-')}
+SHIFTING TO:   {r.get('shift_to', '-')}
+------------------------------------
+ALLOTTED BED:  {b_no}
+------------------------------------
+
+Note: This slip is valid for today's only.
+====================================
+"""
+                r_cols[9].download_button("🖨️ Receipt", data=receipt_text, file_name=f"Receipt_{r['name']}.txt", key=f"rec_{r['ID']}")
 
 # --- 6. UNIFIED ADMIN SIDEBAR CONTROL ---
 show_dashboard = False 
@@ -144,21 +152,13 @@ with st.sidebar:
         st.success("Authorized: Full Access")
         show_dashboard = True 
 
-        # HANDOVER REPORT
-        st.divider()
-        if st.button("Generate Handover Summary"):
-            done = [r for r in req_list if r.get('bed_no')]
-            rep = f"GEIMS SHIFT REPORT - {today_date}\n\n"
-            for r in done: rep += f"- {r['name']} ({r['category']}) -> Bed: {r['bed_no']}\n"
-            st.download_button("📥 Download Report", data=rep, file_name=f"Handover_{today_date}.txt")
-
         # Modification Tools
         st.divider()
         st.subheader("📝 Entry Modification")
         if req_list:
             target = st.selectbox("Select Patient to Modify", [r['name'] for r in req_list], key="sidebar_mod")
             action = st.radio("Action", ["Edit Remark", "Mark as CANCELLED", "Delete Entry"], horizontal=True)
-            new_val = st.text_input("New Remark")
+            new_val = st.text_input("New Remark (if editing)")
             if st.button("Confirm Action"):
                 r_id = next(r['ID'] for r in req_list if r['name'] == target)
                 if action == "Delete Entry": db.collection("bed_requests").document(r_id).delete()
@@ -171,7 +171,7 @@ with st.sidebar:
         st.subheader("🔑 Allotment Tools")
         waiting = [r for r in req_list if not r.get('bed_no') and r.get('status') == "WAITING"]
         if waiting:
-            p_sel = st.selectbox("Assign Patient", [r['name'] for r in waiting])
+            p_sel = st.selectbox("Assign Bed to Patient", [r['name'] for r in waiting])
             b_val = st.text_input("Enter Bed No.")
             if st.button("Finalize Allotment"):
                 r_id = next(r['ID'] for r in waiting if r['name'] == p_sel)
@@ -180,12 +180,23 @@ with st.sidebar:
                     db.collection("beds").document(b_val).set({"status": "ALLOTTED", "patient": p_sel})
                 st.rerun()
         
-        # Resets
+        # Manual Updates
         st.divider()
-        st.error("⚠️ DATA RESET")
+        st.subheader("⚙️ Manual Bed Update")
+        man_bed = st.selectbox("Select Bed ID", all_bed_ids)
+        man_stat = st.selectbox("Update Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE", "RESTRICTED"])
+        man_name = st.text_input("Patient Name (Manual)")
+        if st.button("Apply Manual Update"):
+            db.collection("beds").document(man_bed).set({"status": man_stat, "patient": man_name})
+            st.rerun()
+
+        # THE RESET BUTTON
+        st.divider()
+        st.error("⚠️ DATA RESET TOOLS")
         if st.button("RESET ALL BEDS"):
             for b in all_bed_ids: db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
             st.rerun()
+            
         if st.button("CLEAR PATIENT REQUEST LIST"):
             for r in db.collection("bed_requests").stream(): r.reference.delete()
             st.rerun()
