@@ -114,36 +114,27 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{status}</span>", unsafe_allow_html=True)
 
             if status == "DONE":
-                # REFINED A5 FORMAT FOR ANUJ GILL
+                # UPDATED A5 RECEIPT FORMAT AS PER INSTRUCTIONS
                 receipt_text = f"""
-==========================================
-        G.E.I.M.S (Bed Management)
-==========================================
+====================================
+      G.E.I.M.S (Bed Management)
+====================================
 DATE: {today_date}
+PATIENT NAME: {r['name']}
+CATEGORY: {r.get('category', '-')}
+ADMITTED UNDER: {r.get('dr_name', '-')}
 
-PATIENT NAME: {r['name'].upper()}
-CATEGORY:     {r.get('category', '-')}
-ADMITTED UNDER: {r.get('dr_name', '-').upper()}
-
-------------------------------------------
+------------------------------------
 SHIFTING FROM: {r.get('shift_from', '-')}
 SHIFTING TO:   {r.get('shift_to', '-')}
-------------------------------------------
-
+------------------------------------
 ALLOTTED BED:  {b_no}
-
-REMARK: {r.get('remark', '-')}
-
-------------------------------------------
+------------------------------------
 
 Note: This slip is valid for today only.
-
-\n\n\n
-__________________________
-   Shift In-Charge
-==========================================
+====================================
 """
-                r_cols[9].download_button("🖨️ Print Slip", data=receipt_text, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
+                r_cols[9].download_button("🖨️ Receipt (A5)", data=receipt_text, file_name=f"GEIMS_Receipt_{r['name']}.txt", key=f"rec_{r['ID']}")
 
 # --- 6. UNIFIED ADMIN SIDEBAR CONTROL ---
 show_dashboard = False 
@@ -155,6 +146,7 @@ with st.sidebar:
         st.success("Authorized: Full Access")
         show_dashboard = True 
 
+        # Modification Tools
         st.divider()
         st.subheader("📝 Entry Modification")
         if req_list:
@@ -168,6 +160,7 @@ with st.sidebar:
                 else: db.collection("bed_requests").document(r_id).update({"remark": new_val})
                 st.rerun()
         
+        # Allotment Tools
         st.divider()
         st.subheader("🔑 Bed Allotment")
         waiting = [r for r in req_list if not r.get('bed_no') and r.get('status') == "WAITING"]
@@ -180,14 +173,15 @@ with st.sidebar:
                 if b_val in all_bed_ids:
                     db.collection("beds").document(b_val).set({"status": "ALLOTTED", "patient": p_sel})
                 st.rerun()
-
+        
+        # Manual Updates
         st.divider()
         st.subheader("⚙️ Manual Bed Update")
-        m_bed = st.selectbox("Bed ID", all_bed_ids)
-        m_stat = st.selectbox("Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE", "RESTRICTED"])
-        m_name = st.text_input("Patient Name (Manual)")
+        man_bed = st.selectbox("Select Bed ID", all_bed_ids)
+        man_stat = st.selectbox("Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE", "RESTRICTED"])
+        man_name = st.text_input("Patient Name (Manual)")
         if st.button("Apply Update"):
-            db.collection("beds").document(m_bed).set({"status": m_stat, "patient": m_name})
+            db.collection("beds").document(man_bed).set({"status": man_stat, "patient": man_name})
             st.rerun()
 
         st.divider()
