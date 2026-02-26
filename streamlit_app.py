@@ -42,8 +42,8 @@ if db:
     docs = db.collection("beds").stream()
     live_data = {doc.id: doc.to_dict() for doc in docs}
 
-    # UPDATED: Changed direction to ASCENDING for chronological order (Oldest at Top)
-    reqs_stream = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.ASCENDING).limit(50).stream()
+    # Chronological Order: Oldest at Top
+    reqs_stream = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.ASCENDING).limit(100).stream()
     req_list = []
     for r in reqs_stream:
         d = r.to_dict(); d['ID'] = r.id; req_list.append(d)
@@ -77,7 +77,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         p_name = c1.text_input("PATIENT NAME")
         p_cat = c1.selectbox("CATEGORY", ["ECHS", "UPCL", "UJVN", "CGHS CASH", "BHEL", "ONGC", "TPA", "CGHS", "SELF PAY", "ICAR", "AYUSHMAN", "OTHER"])
         dr_name = c1.text_input("ADMITTED UNDER DOCTOR")
-        p_fr = c2.selectbox("SHIFT FROM", ["CCU", "DELUXE", "PVT", "SEMI PVT", "HDU", "OPD", "ICU", "WARD", "LR", "OTHER"])
+        p_fr = c2.selectbox("SHIFT FROM", ["CCU", "DELUXE", "PVT", "SEMI PVT", "HDU", "OPD", "ICU", "WARD", "LR", "EMERGENCY" "OTHER"])
         p_to = c2.selectbox("SHIFTING TO", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
         rem = c2.text_input("REMARK")
         if st.form_submit_button("Submit Request"):
@@ -120,26 +120,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{status}</span>", unsafe_allow_html=True)
 
             if status == "DONE":
-                receipt_text = f"""
-====================================
-      G.E.I.M.S (Bed Management)
-      BED ALLOTMENT SLIP
-====================================
-DATE: {today_date}
-PATIENT NAME: {r['name']}
-CATEGORY: {r.get('category', '-')}
-ADMITTED UNDER: {r.get('dr_name', '-')}
-
-------------------------------------
-SHIFTING FROM: {r.get('shift_from', '-')}
-SHIFTING TO:   {r.get('shift_to', '-')}
-------------------------------------
-ALLOTTED BED:  {b_no}
-------------------------------------
-
-Note: This slip is valid for today's only.
-====================================
-"""
+                receipt_text = f"====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date}\nPATIENT NAME: {r['name']}\nCATEGORY: {r.get('category', '-')}\nADMITTED UNDER: {r.get('dr_name', '-')}\n\n------------------------------------\nSHIFTING FROM: {r.get('shift_from', '-')}\nSHIFTING TO:   {r.get('shift_to', '-')}\n------------------------------------\nALLOTTED BED:  {b_no}\n------------------------------------\n\nNote: This slip is valid for today's only.\n===================================="
                 r_cols[9].download_button("🖨️ Receipt", data=receipt_text, file_name=f"Receipt_{r['name']}.txt", key=f"rec_{r['ID']}")
 
 # --- 6. UNIFIED ADMIN SIDEBAR CONTROL ---
@@ -151,6 +132,25 @@ with st.sidebar:
     if admin_pwd == "GeimsAdmin99":
         st.success("Authorized: Full Access")
         show_dashboard = True 
+
+        # --- SHIFT HANDOVER REPORT FEATURE ---
+        st.divider()
+        st.subheader("📑 Shift Handover Report")
+        if req_list:
+            df_report = pd.DataFrame(req_list)
+            # Formatting the dataframe for a clean Excel/CSV report
+            report_data = df_report[['date', 'name', 'category', 'dr_name', 'shift_from', 'shift_to', 'bed_no', 'status']].copy()
+            report_data.columns = ['Date', 'Patient Name', 'Category', 'Doctor', 'Shift From', 'Shift To', 'Bed Allotted', 'Final Status']
+            
+            csv = report_data.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Download Shift Summary (CSV)",
+                data=csv,
+                file_name=f"GEIMS_Handover_{today_date.replace('/','-')}.csv",
+                mime='text/csv',
+                help="Download this before clearing the list for your handover records."
+            )
+            st.info("Tip: Open this file in Excel to print your shift summary.")
 
         # Modification Tools
         st.divider()
@@ -179,18 +179,8 @@ with st.sidebar:
                 if b_val in all_bed_ids:
                     db.collection("beds").document(b_val).set({"status": "ALLOTTED", "patient": p_sel})
                 st.rerun()
-        
-        # Manual Updates
-        st.divider()
-        st.subheader("⚙️ Manual Bed Update")
-        man_bed = st.selectbox("Select Bed ID", all_bed_ids)
-        man_stat = st.selectbox("Update Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE", "RESTRICTED"])
-        man_name = st.text_input("Patient Name (Manual)")
-        if st.button("Apply Manual Update"):
-            db.collection("beds").document(man_bed).set({"status": man_stat, "patient": man_name})
-            st.rerun()
 
-        # THE RESET BUTTON
+        # Data Reset
         st.divider()
         st.error("⚠️ DATA RESET TOOLS")
         if st.button("RESET ALL BEDS"):
