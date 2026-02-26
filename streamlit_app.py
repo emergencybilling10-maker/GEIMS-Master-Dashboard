@@ -90,12 +90,18 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
 
     if req_list:
         st.divider()
+        # SEARCH BAR
+        search_query = st.text_input("🔍 Search Patient Name", "").lower()
+        
         st.subheader("Shifting Request Status List")
         h_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1, 1.5])
         headers = ["S.N", "NAME", "CATEGORY", "DOCTOR", "FROM", "TO", "REMARK", "BED", "STATUS", "ACTION"]
         for col, h in zip(h_cols, headers): col.write(f"**{h}**")
         
         for idx, r in enumerate(req_list):
+            if search_query and search_query not in r.get('name', '').lower():
+                continue
+                
             b_no = r.get('bed_no', '')
             status = r.get('status', 'WAITING')
             if b_no: status = "DONE"
@@ -114,10 +120,11 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{status}</span>", unsafe_allow_html=True)
 
             if status == "DONE":
-                # UPDATED A5 RECEIPT FORMAT AS PER INSTRUCTIONS
+                # UPDATED A5 RECEIPT FORMAT
                 receipt_text = f"""
 ====================================
       G.E.I.M.S (Bed Management)
+      BED ALLOTMENT SLIP
 ====================================
 DATE: {today_date}
 PATIENT NAME: {r['name']}
@@ -131,10 +138,10 @@ SHIFTING TO:   {r.get('shift_to', '-')}
 ALLOTTED BED:  {b_no}
 ------------------------------------
 
-Note: This slip is valid for today only.
+Note: This slip is valid for today's only.
 ====================================
 """
-                r_cols[9].download_button("🖨️ Receipt (A5)", data=receipt_text, file_name=f"GEIMS_Receipt_{r['name']}.txt", key=f"rec_{r['ID']}")
+                r_cols[9].download_button("🖨️ Receipt", data=receipt_text, file_name=f"Receipt_{r['name']}.txt", key=f"rec_{r['ID']}")
 
 # --- 6. UNIFIED ADMIN SIDEBAR CONTROL ---
 show_dashboard = False 
@@ -162,11 +169,11 @@ with st.sidebar:
         
         # Allotment Tools
         st.divider()
-        st.subheader("🔑 Bed Allotment")
+        st.subheader("🔑 Allotment Tools")
         waiting = [r for r in req_list if not r.get('bed_no') and r.get('status') == "WAITING"]
         if waiting:
-            p_sel = st.selectbox("Assign Patient", [r['name'] for r in waiting])
-            b_val = st.text_input("Assign Bed No.")
+            p_sel = st.selectbox("Assign Bed to Patient", [r['name'] for r in waiting])
+            b_val = st.text_input("Enter Bed No.")
             if st.button("Finalize Allotment"):
                 r_id = next(r['ID'] for r in waiting if r['name'] == p_sel)
                 db.collection("bed_requests").document(r_id).update({"bed_no": b_val, "status": "DONE"})
@@ -178,9 +185,9 @@ with st.sidebar:
         st.divider()
         st.subheader("⚙️ Manual Bed Update")
         man_bed = st.selectbox("Select Bed ID", all_bed_ids)
-        man_stat = st.selectbox("Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE", "RESTRICTED"])
+        man_stat = st.selectbox("Update Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE", "RESTRICTED"])
         man_name = st.text_input("Patient Name (Manual)")
-        if st.button("Apply Update"):
+        if st.button("Apply Manual Update"):
             db.collection("beds").document(man_bed).set({"status": man_stat, "patient": man_name})
             st.rerun()
 
