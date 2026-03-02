@@ -42,7 +42,6 @@ if db:
     docs = db.collection("beds").stream()
     live_data = {doc.id: doc.to_dict() for doc in docs}
 
-    # Chronological order: Oldest at Top
     reqs_stream = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.ASCENDING).limit(100).stream()
     req_list = []
     for r in reqs_stream:
@@ -50,7 +49,9 @@ if db:
     
     # FETCH FUTURE BOOKINGS
     book_stream = db.collection("future_bookings").order_by("book_date", direction=firestore.Query.ASCENDING).stream()
-    book_list = [b.to_dict() for b in book_stream]
+    book_list = []
+    for b in book_stream:
+        bd = b.to_dict(); bd['ID'] = b.id; book_list.append(bd)
 else:
     st.error("Database connection failed.")
     st.stop()
@@ -61,7 +62,7 @@ today_date = datetime.now(tz).strftime('%d/%m/%Y')
 
 col_logo, col_head = st.columns([1, 4])
 with col_logo:
-    # Adding the branding logo to the dashboard
+    # GEIMS Branding
     st.image("https://raw.githubusercontent.com/Anujgill99/Geims-beds/main/image_26f2bf.png", width=150)
 with col_head:
     st.markdown("<h1 style='text-align: left; margin-top: 0;'>GEIMS Bed Management Dashboard</h1>", unsafe_allow_html=True)
@@ -133,6 +134,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
 show_dashboard = False 
 with st.sidebar:
     st.header("📅 Future Booking Control")
+    # Section to Add Booking
     with st.expander("📝 ADD FUTURE BOOKING"):
         with st.form("future_form", clear_on_submit=True):
             f_name = st.text_input("Patient Name")
@@ -147,8 +149,18 @@ with st.sidebar:
                 st.success("Booking Saved")
                 st.rerun()
 
+    # Section to Remove Booking
     if book_list:
+        st.divider()
         st.subheader("Upcoming Bookings")
+        remove_sel = st.selectbox("Remove a Booking", ["Select Patient"] + [b['name'] for b in book_list])
+        if st.button("Delete Selected Booking"):
+            if remove_sel != "Select Patient":
+                b_id = next(b['ID'] for b in book_list if b['name'] == remove_sel)
+                db.collection("future_bookings").document(b_id).delete()
+                st.success(f"Removed: {remove_sel}")
+                st.rerun()
+        
         for b in book_list:
             st.info(f"**{b['name']}** - {b['book_date']}\nPref: {b['preference']}")
 
