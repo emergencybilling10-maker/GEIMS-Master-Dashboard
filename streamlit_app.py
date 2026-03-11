@@ -33,49 +33,42 @@ bed_structure = {
 }
 all_bed_ids = [b for w in bed_structure.values() for b in w]
 
-# --- 3. FAILSAFE DATA FETCH ---
+# --- 3. FAILSAFE DATA FETCH (Manual Refresh Supported) ---
 if db:
-    # Check if memory is empty; if so, fetch once
     if 'cached_live_data' not in st.session_state or 'cached_req_list' not in st.session_state:
-        try:
-            status_doc = db.collection("settings").document("dashboard_status").get()
-            st.session_state.is_live = status_doc.to_dict().get("status", "LIVE") if status_doc.exists else "LIVE"
+        status_doc = db.collection("settings").document("dashboard_status").get()
+        st.session_state.is_live = status_doc.to_dict().get("status", "LIVE") if status_doc.exists else "LIVE"
 
-            docs = db.collection("beds").stream()
-            st.session_state.cached_live_data = {doc.id: doc.to_dict() for doc in docs}
+        docs = db.collection("beds").stream()
+        st.session_state.cached_live_data = {doc.id: doc.to_dict() for doc in docs}
 
-            reqs_stream = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.ASCENDING).limit(100).stream()
-            st.session_state.cached_req_list = [r.to_dict() | {'ID': r.id} for r in reqs_stream]
-            
-            book_stream = db.collection("future_bookings").order_by("book_date", direction=firestore.Query.ASCENDING).stream()
-            st.session_state.cached_book_list = [b.to_dict() | {'ID': b.id} for b in book_stream]
-        except Exception as e:
-            st.error(f"Database Error: {e}")
-            st.stop()
+        reqs_stream = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.ASCENDING).limit(100).stream()
+        st.session_state.cached_req_list = [r.to_dict() | {'ID': r.id} for r in reqs_stream]
+        
+        book_stream = db.collection("future_bookings").order_by("book_date", direction=firestore.Query.ASCENDING).stream()
+        st.session_state.cached_book_list = [b.to_dict() | {'ID': b.id} for b in book_stream]
 
-    # Safely assign local variables
-    is_live = st.session_state.get('is_live', "LIVE")
-    live_data = st.session_state.get('cached_live_data', {})
-    req_list = st.session_state.get('cached_req_list', [])
-    book_list = st.session_state.get('cached_book_list', [])
+    live_data = st.session_state.cached_live_data
+    req_list = st.session_state.cached_req_list
+    book_list = st.session_state.cached_book_list
 else:
     st.error("Database Connection Failed."); st.stop()
 
 # --- 4. HEADER & MANUAL REFRESH ---
 tz = pytz.timezone('Asia/Kolkata')
-today_date_str = datetime.now(tz).strftime('%d/%m/%Y')
-today_iso = datetime.now(tz).strftime('%Y-%m-%d')
+today_dt = datetime.now(tz)
+today_date_str = today_dt.strftime('%d/%m/%Y')
+today_iso = today_dt.strftime('%Y-%m-%d')
 
 st.markdown("<h1 style='text-align: center; margin-bottom: 0;'>Bed Management Dashboard</h1>", unsafe_allow_html=True)
 st.markdown(f"<p style='text-align: center;'><b>Current Date: {today_date_str}</b></p>", unsafe_allow_html=True)
 
-# Button to manually clear memory and pull new data
 if st.button("🔄 Refresh Dashboard Data"):
     for key in ['cached_live_data', 'is_live', 'cached_req_list', 'cached_book_list']:
         if key in st.session_state: del st.session_state[key]
     st.rerun()
 
-# --- 5. ALERTS ---
+# --- 5. FUTURE BOOKING ALERT ---
 alerts = [b for b in book_list if b.get('book_date') == today_iso]
 for a in alerts:
     st.markdown(f"""
@@ -86,7 +79,7 @@ for a in alerts:
         <style> @keyframes blinker {{ 50% {{ opacity: 0.4; }} }} </style>
     """, unsafe_allow_html=True)
 
-# --- 6. MANAGE REQUESTS ---
+# --- 6. MANAGE PATIENT REQUESTS ---
 with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
     pending = sum(1 for r in req_list if r.get('status') == "WAITING" and not r.get('bed_no'))
     allotted = sum(1 for r in req_list if r.get('bed_no') != "")
@@ -99,10 +92,10 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         st.subheader("New Shifting Request Entry")
         c1, c2 = st.columns(2)
         p_name = c1.text_input("PATIENT NAME")
-        p_cat = c1.selectbox("CATEGORY", ["SELF PAY", "ECHS", "CGHS", "TPA", "OTHER"])
-        dr_name = c1.text_input("DOCTOR")
-        p_fr = c2.selectbox("FROM", ["ER", "ICU", "WARD", "OT", "OTHER"])
-        p_to = c2.selectbox("TO", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
+        p_cat = c1.selectbox("CATEGORY", ["SELF PAY", "ECHS", "UPCL", "UJVN", "CGHS CASH", "BHEL", "ONGC", "TPA", "CGHS", "ICAR", "AYUSHMAN", "OTHER"])
+        dr_name = c1.text_input("ADMITTED UNDER DOCTOR")
+        p_fr = c2.selectbox("SHIFT FROM", ["CCU", "DELUXE", "PVT", "SEMI PVT", "HDU", "OPD", "ICU", "WARD", "LR", "OTHER"])
+        p_to = c2.selectbox("SHIFTING TO", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
         if st.form_submit_button("Submit Request"):
             if p_name:
                 db.collection("bed_requests").add({
@@ -110,7 +103,6 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                     "dr_name": dr_name, "shift_from": p_fr, "shift_to": p_to, 
                     "bed_no": "", "status": "WAITING", "date": today_date_str
                 })
-                # Clear cache so it fetches new list
                 if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                 st.rerun()
 
@@ -136,26 +128,26 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                 slip = f"====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r['name']}\n------------------------------------\nBED:  {b_no}\n===================================="
                 r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
 
-# --- 7. SIDEBAR ---
+# --- 7. SIDEBAR (Full Admin Restore & Future Booking) ---
 show_dashboard = False 
 with st.sidebar:
-    st.header("📅 Future Booking")
+    st.header("📅 Future Booking Control")
     with st.expander("📝 ADD FUTURE BOOKING"):
         with st.form("future_form", clear_on_submit=True):
-            f_name = st.text_input("Patient Name"); f_uhid = st.text_input("UHID"); f_dr = st.text_input("Doctor")
-            f_date = st.date_input("Date"); f_pref = st.selectbox("Bed Preference", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
+            f_name = st.text_input("Patient Name"); f_uhid = st.text_input("UHID No."); f_dr = st.text_input("Doctor Name")
+            f_date = st.date_input("Booking Date"); f_cat = st.selectbox("Category", ["SELF PAY", "OTHER"]); f_pref = st.selectbox("Bed Preference", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
             if st.form_submit_button("Save"):
                 db.collection("future_bookings").add({
-                    "name": f_name, "uhid": f_uhid, "dr": f_dr, "book_date": f_date.strftime('%Y-%m-%d'), "preference": f_pref
+                    "name": f_name, "uhid": f_uhid, "dr": f_dr, "book_date": f_date.strftime('%Y-%m-%d'), "category": f_cat, "preference": f_pref
                 })
                 if 'cached_book_list' in st.session_state: del st.session_state['cached_book_list']
                 st.rerun()
 
     if book_list:
         st.divider(); st.subheader("Manage Bookings")
-        remove_sel = st.selectbox("Delete Booking", ["Select"] + [b['name'] for b in book_list])
-        if st.button("Confirm Delete"):
-            if remove_sel != "Select":
+        remove_sel = st.selectbox("Delete a Booking", ["Select Patient"] + [b['name'] for b in book_list])
+        if st.button("Delete Selected"):
+            if remove_sel != "Select Patient":
                 b_id = next(b['ID'] for b in book_list if b['name'] == remove_sel)
                 db.collection("future_bookings").document(b_id).delete()
                 if 'cached_book_list' in st.session_state: del st.session_state['cached_book_list']
@@ -164,29 +156,66 @@ with st.sidebar:
     st.divider(); st.header("🛡️ Admin Panel")
     if st.text_input("Admin Password", type="password") == "GeimsAdmin99":
         show_dashboard = True 
-        st.subheader("🔑 Allotment Tools")
-        wait = [r for r in req_list if not r.get('bed_no') and r.get('status') == "WAITING"]
-        if wait:
-            p_sel = st.selectbox("Assign Patient", [r['name'] for r in wait])
+        st.subheader("📋 Reports")
+        if st.button("Download Handover Summary"):
+            done = [r for r in req_list if r.get('bed_no')]
+            rep = f"GEIMS SHIFT REPORT - {today_date_str}\n\n"
+            for r in done: rep += f"- {r['name']} ({r['category']}) -> Bed: {r['bed_no']}\n"
+            st.download_button("📥 Get Report", data=rep, file_name=f"Handover_{today_date_str}.txt")
+        
+        st.divider(); st.subheader("📝 Entry Modification")
+        if req_list:
+            target = st.selectbox("Select Patient to Modify", [r['name'] for r in req_list], key="sb_mod")
+            action = st.radio("Action", ["Edit Remark", "Mark as CANCELLED", "Delete Entry"], horizontal=True)
+            new_val = st.text_input("New Remark")
+            if st.button("Confirm Action"):
+                r_id = next(r['ID'] for r in req_list if r['name'] == target)
+                if action == "Delete Entry": db.collection("bed_requests").document(r_id).delete()
+                elif action == "Mark as CANCELLED": db.collection("bed_requests").document(r_id).update({"status": "CANCELLED", "bed_no": ""})
+                else: db.collection("bed_requests").document(r_id).update({"remark": new_val})
+                if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
+                st.rerun()
+        
+        st.divider(); st.subheader("🔑 Allotment Tools")
+        waiting = [r for r in req_list if not r.get('bed_no') and r.get('status') == "WAITING"]
+        if waiting:
+            p_sel = st.selectbox("Assign Patient", [r['name'] for r in waiting])
             b_val = st.text_input("Enter Bed ID")
             if st.button("Finalize Allotment"):
-                r_id = next(r['ID'] for r in wait if r['name'] == p_sel)
+                r_id = next(r['ID'] for r in waiting if r['name'] == p_sel)
                 db.collection("bed_requests").document(r_id).update({"bed_no": b_val, "status": "DONE"})
                 if b_val in all_bed_ids: db.collection("beds").document(b_val).set({"status": "ALLOTTED", "patient": p_sel})
                 if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                 if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
                 st.rerun()
 
+        st.divider(); st.subheader("⚙️ Manual Bed Update")
+        m_bed = st.selectbox("Select Bed ID", all_bed_ids); m_stat = st.selectbox("Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE", "RESTRICTED"]); m_name = st.text_input("Patient")
+        if st.button("Apply"):
+            db.collection("beds").document(m_bed).set({"status": m_stat, "patient": m_name})
+            if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
+            st.rerun()
+
+        st.divider(); st.error("⚠️ DATA RESET")
+        if st.button("RESET ALL BEDS"):
+            for b in all_bed_ids: db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
+            if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
+            st.rerun()
+        if st.button("CLEAR REQUEST LIST"):
+            for r in db.collection("bed_requests").stream(): r.reference.delete()
+            if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
+            st.rerun()
+
 # --- 8. VISUAL DASHBOARD ---
 if show_dashboard:
-    status_colors = {"VACANT": "#FFFFFF", "ALLOTTED": "#000000", "MAINTENANCE": "#E0E0E0"}
+    status_colors = {"VACANT": "#FFFFFF", "BOOKED": "#90EE90", "ALLOTTED": "#000000", "DISCHARGE": "#ADD8E6", "MAINTENANCE": "#E0E0E0", "RESTRICTED": "#FF0000"}
     st.title("🏥 Live Bed Status")
     for wing, beds in bed_structure.items():
         st.subheader(wing); cols = st.columns(5)
         for i, bed in enumerate(beds):
             data = live_data.get(bed, {"status": "VACANT", "patient": ""})
             bg = status_colors.get(data.get('status', 'VACANT'), "#FFFFFF")
-            txt = "white" if data.get('status') == "ALLOTTED" else "black"
+            txt = "white" if data.get('status') in ["ALLOTTED", "RESTRICTED"] else "black"
             with cols[i % 5]:
                 st.markdown(f'<div style="background-color:{bg}; color:{txt}; padding:5px; border:1px solid #ccc; border-radius:5px; text-align:center; height:85px; font-size:11px;"><b>{bed}</b><br><span style="font-size:10px; font-weight:bold;">{data.get("status", "VACANT")}</span><br><i style="font-size:10px;">{data.get("patient", "")}</i></div>', unsafe_allow_html=True)
 else:
