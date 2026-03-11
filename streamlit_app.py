@@ -97,9 +97,9 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         p_name = c1.text_input("PATIENT NAME")
         p_cat = c1.selectbox("CATEGORY", ["SELF PAY", "ECHS", "UPCL", "UJVN", "CGHS CASH", "BHEL", "ONGC", "TPA", "CGHS", "ICAR", "AYUSHMAN", "OTHER"])
         dr_name = c1.text_input("ADMITTED UNDER DOCTOR")
-        p_fr = c2.selectbox("SHIFT FROM", ["CCU", "DELUXE", "PVT", "SEMI PVT", "HDU", "OPD", "ICU", "WARD", "EMERGENCY", "LR", "OTHER"])
-        p_to = c2.selectbox("SHIFTING TO", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
-        rem = c2.text_input("REMARK") # RESTORED REMARK FIELD
+        p_fr = c2.selectbox("SHIFT FROM", ["CCU", "EMERGENCY", "DELUXE", "PVT", "SEMI PVT", "HDU", "OPD", "ICU", "WARD", "LR", "OTHER"])
+        p_to = c2.selectbox("SHIFTING TO", ["DELUXE", "PRIVATE", "SEMI-PRIVATE", "GEN-WARD"])
+        rem = c2.text_input("REMARK")
         if st.form_submit_button("Submit Request"):
             if p_name:
                 db.collection("bed_requests").add({
@@ -122,12 +122,18 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             if sq and sq not in r.get('name', '').lower(): continue
             b_no = r.get('bed_no', ''); status = r.get('status', 'WAITING')
             if b_no: status = "DONE"
+            
+            # Color logic for new statuses
             r_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1, 1.5])
             r_cols[0].write(idx + 1); r_cols[1].write(r.get('name', '-')); r_cols[2].write(r.get('category', '-'))
             r_cols[3].write(r.get('dr_name', '-')); r_cols[4].write(r.get('shift_from', '-')); r_cols[5].write(r.get('shift_to', '-'))
             r_cols[6].write(r.get('remark', '-')); r_cols[7].write(b_no if b_no else "-")
-            color = "green" if status == "DONE" else ("red" if status == "CANCELLED" else "orange")
+            
+            # Status styling
+            color_map = {"DONE": "green", "CANCELLED": "red", "GEN-WARD ALLOTTED": "blue", "HOLD": "purple"}
+            color = color_map.get(status, "orange")
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{status}</span>", unsafe_allow_html=True)
+            
             if status == "DONE":
                 slip = f"====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r['name']}\n------------------------------------\nBED:  {b_no}\n===================================="
                 r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
@@ -160,23 +166,25 @@ with st.sidebar:
     st.divider(); st.header("🛡️ Admin Panel")
     if st.text_input("Admin Password", type="password") == "GeimsAdmin99":
         show_dashboard = True 
-        st.subheader("📋 Reports")
-        if st.button("Download Handover Summary"):
-            done = [r for r in req_list if r.get('bed_no')]
-            rep = f"GEIMS SHIFT REPORT - {today_date_str}\n\n"
-            for r in done: rep += f"- {r['name']} ({r['category']}) -> Bed: {r['bed_no']}\n"
-            st.download_button("📥 Get Report", data=rep, file_name=f"Handover_{today_date_str}.txt")
         
         st.divider(); st.subheader("📝 Entry Modification")
         if req_list:
             target = st.selectbox("Select Patient to Modify", [r['name'] for r in req_list], key="sb_mod")
-            action = st.radio("Action", ["Edit Remark", "Mark as CANCELLED", "Delete Entry"], horizontal=True)
-            new_val = st.text_input("New Remark")
+            # RESTORED AND ADDED NEW OPTIONS
+            action = st.radio("Action", ["Edit Remark", "Mark as CANCELLED", "GEN-WARD ALLOTTED", "HOLD", "Delete Entry"], horizontal=True)
+            new_val = st.text_input("New Remark (if editing)")
             if st.button("Confirm Action"):
                 r_id = next(r['ID'] for r in req_list if r['name'] == target)
-                if action == "Delete Entry": db.collection("bed_requests").document(r_id).delete()
-                elif action == "Mark as CANCELLED": db.collection("bed_requests").document(r_id).update({"status": "CANCELLED", "bed_no": ""})
-                else: db.collection("bed_requests").document(r_id).update({"remark": new_val})
+                if action == "Delete Entry": 
+                    db.collection("bed_requests").document(r_id).delete()
+                elif action == "GEN-WARD ALLOTTED": 
+                    db.collection("bed_requests").document(r_id).update({"status": "GEN-WARD ALLOTTED", "bed_no": ""})
+                elif action == "HOLD": 
+                    db.collection("bed_requests").document(r_id).update({"status": "HOLD", "bed_no": ""})
+                elif action == "Mark as CANCELLED": 
+                    db.collection("bed_requests").document(r_id).update({"status": "CANCELLED", "bed_no": ""})
+                else: 
+                    db.collection("bed_requests").document(r_id).update({"remark": new_val})
                 if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                 st.rerun()
         
@@ -192,13 +200,6 @@ with st.sidebar:
                 if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                 if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
                 st.rerun()
-
-        st.divider(); st.subheader("⚙️ Manual Bed Update")
-        m_bed = st.selectbox("Select Bed ID", all_bed_ids); m_stat = st.selectbox("Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE", "RESTRICTED"]); m_name = st.text_input("Patient")
-        if st.button("Apply"):
-            db.collection("beds").document(m_bed).set({"status": m_stat, "patient": m_name})
-            if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
-            st.rerun()
 
         st.divider(); st.error("⚠️ DATA RESET")
         if st.button("RESET ALL BEDS"):
