@@ -98,7 +98,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         p_cat = c1.selectbox("CATEGORY", ["SELF PAY", "ECHS", "UPCL", "UJVN", "CGHS CASH", "BHEL", "ONGC", "TPA", "CGHS", "ICAR", "AYUSHMAN", "OTHER"])
         dr_name = c1.text_input("ADMITTED UNDER DOCTOR")
         p_fr = c2.selectbox("SHIFT FROM", ["CCU", "DELUXE", "PVT", "SEMI PVT", "HDU", "OPD", "ICU", "WARD", "EMERGENCY", "LR", "OTHER"])
-        p_to = c2.selectbox("SHIFTING TO", ["DELUXE", "PRIVATE", "SEMI-PRIVATE", "GEN-WARD"])
+        p_to = c2.selectbox("SHIFTING TO", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
         rem = c2.text_input("REMARK") # RESTORED REMARK FIELD
         if st.form_submit_button("Submit Request"):
             if p_name:
