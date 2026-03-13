@@ -36,21 +36,14 @@ all_bed_ids = [b for w in bed_structure.values() for b in w]
 # --- 3. FAILSAFE DATA FETCH ---
 if db:
     if 'cached_live_data' not in st.session_state or 'cached_req_list' not in st.session_state:
-        try:
-            status_doc = db.collection("settings").document("dashboard_status").get()
-            st.session_state.is_live = status_doc.to_dict().get("status", "LIVE") if status_doc.exists else "LIVE"
-
-            docs = db.collection("beds").stream()
-            st.session_state.cached_live_data = {doc.id: doc.to_dict() for doc in docs}
-
-            reqs_stream = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.ASCENDING).limit(100).stream()
-            st.session_state.cached_req_list = [r.to_dict() | {'ID': r.id} for r in reqs_stream]
-            
-            book_stream = db.collection("future_bookings").order_by("book_date", direction=firestore.Query.ASCENDING).stream()
-            st.session_state.cached_book_list = [b.to_dict() | {'ID': b.id} for b in book_stream]
-        except Exception as e:
-            st.error(f"Database Error: {e}")
-            st.stop()
+        status_doc = db.collection("settings").document("dashboard_status").get()
+        st.session_state.is_live = status_doc.to_dict().get("status", "LIVE") if status_doc.exists else "LIVE"
+        docs = db.collection("beds").stream()
+        st.session_state.cached_live_data = {doc.id: doc.to_dict() for doc in docs}
+        reqs_stream = db.collection("bed_requests").order_by("timestamp", direction=firestore.Query.ASCENDING).limit(100).stream()
+        st.session_state.cached_req_list = [r.to_dict() | {'ID': r.id} for r in reqs_stream]
+        book_stream = db.collection("future_bookings").order_by("book_date", direction=firestore.Query.ASCENDING).stream()
+        st.session_state.cached_book_list = [b.to_dict() | {'ID': b.id} for b in book_stream]
 
     live_data = st.session_state.cached_live_data
     req_list = st.session_state.cached_req_list
@@ -58,10 +51,11 @@ if db:
 else:
     st.error("Database Connection Failed."); st.stop()
 
-# --- 4. HEADER & MANUAL REFRESH ---
+# --- 4. HEADER ---
 tz = pytz.timezone('Asia/Kolkata')
-today_date_str = datetime.now(tz).strftime('%d/%m/%Y')
-today_iso = datetime.now(tz).strftime('%Y-%m-%d')
+today_dt = datetime.now(tz)
+today_date_str = today_dt.strftime('%d/%m/%Y')
+today_iso = today_dt.strftime('%Y-%m-%d')
 
 st.markdown("<h1 style='text-align: center; margin-bottom: 0;'>Bed Management Dashboard</h1>", unsafe_allow_html=True)
 st.markdown(f"<p style='text-align: center;'><b>Current Date: {today_date_str}</b></p>", unsafe_allow_html=True)
@@ -71,22 +65,39 @@ if st.button("🔄 Refresh Dashboard Data"):
         if key in st.session_state: del st.session_state[key]
     st.rerun()
 
-# --- 5. ALERTS ---
+# --- 5. FUTURE BOOKING ALERT (WITH ACKNOWLEDGE OPTION) ---
 alerts = [b for b in book_list if b.get('book_date') == today_iso]
 for a in alerts:
-    st.markdown(f"""
-        <div style="background-color: #FFEBEE; border: 2px solid #FF5252; padding: 10px; border-radius: 5px; margin-bottom: 10px; animation: blinker 1.5s linear infinite;">
-            <span style="color: #D32F2F; font-weight: bold;">🚨 TODAY'S BOOKING ALERT:</span> 
-            <b>{a['name']}</b> (UHID: {a.get('uhid','-')}) - Dr. {a.get('dr','-')}
-        </div>
-        <style> @keyframes blinker {{ 50% {{ opacity: 0.4; }} }} </style>
-    """, unsafe_allow_html=True)
+    with st.container():
+        # Fixed Name display in Alert
+        st.markdown(f"""
+            <div style="background-color: #FFEBEE; border: 2px solid #FF5252; padding: 15px; border-radius: 5px; margin-bottom: 5px; animation: blinker 1.5s linear infinite;">
+                <span style="color: #D32F2F; font-weight: bold; font-size: 18px;">🚨 TODAY'S BOOKING: {a.get('name', 'N/A')}</span><br>
+                <b>UHID:</b> {a.get('uhid','-')} | <b>Doctor:</b> {a.get('dr','-')} | <b>Pref Bed:</b> {a.get('pref_bed','-')}
+            </div>
+            <style> @keyframes blinker {{ 50% {{ opacity: 0.5; }} }} </style>
+        """, unsafe_allow_html=True)
+        
+        # Acknowledge Button logic
+        if st.button(f"✅ Acknowledge & Admit: {a.get('name')}", key=f"ack_{a['ID']}"):
+            # 1. Add to main patient requests
+            db.collection("bed_requests").add({
+                "timestamp": datetime.now(tz), "name": a.get('name'), "category": a.get('category', 'OTHER'),
+                "dr_name": a.get('dr'), "shift_from": "FUTURE-BOOKING", "shift_to": a.get('preference', 'PVT'), 
+                "remark": f"Auto-admitted from booking (Bed: {a.get('pref_bed','-')})", "bed_no": "", "status": "WAITING", "date": today_date_str
+            })
+            # 2. Remove from future bookings
+            db.collection("future_bookings").document(a['ID']).delete()
+            # 3. Clear cache and refresh
+            for k in ['cached_req_list', 'cached_book_list']: 
+                if k in st.session_state: del st.session_state[k]
+            st.success(f"Transferred {a.get('name')} to Request List.")
+            st.rerun()
 
 # --- 6. MANAGE PATIENT REQUESTS ---
 with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
     pending = sum(1 for r in req_list if r.get('status') == "WAITING" and not r.get('bed_no'))
     allotted = sum(1 for r in req_list if r.get('bed_no') != "")
-    
     s1, s2 = st.columns(2)
     s1.metric("Pending", pending); s2.metric("Done", allotted)
     st.divider()
@@ -113,7 +124,6 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
     if req_list:
         st.divider()
         sq = st.text_input("🔍 Search Patient Name", "").lower()
-        st.subheader("Shifting Request Status List")
         h_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1, 1.5])
         headers = ["S.N", "NAME", "CAT", "DR", "FROM", "TO", "REMARK", "BED", "STATUS", "ACTION"]
         for col, h in zip(h_cols, headers): col.write(f"**{h}**")
@@ -137,39 +147,43 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
 show_dashboard = False 
 with st.sidebar:
     st.header("📅 Future Booking Control")
-    with st.expander("📝 ADD FUTURE BOOKING"):
+    with st.expander("📝 ADD FUTURE BOOKING", expanded=True):
         with st.form("future_form", clear_on_submit=True):
-            f_name = st.text_input("Patient Name"); f_uhid = st.text_input("UHID No."); f_dr = st.text_input("Doctor Name")
-            f_date = st.date_input("Booking Date"); f_cat = st.selectbox("Category", ["SELF PAY", "OTHER"]); f_pref = st.selectbox("Bed Preference", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
+            f_name = st.text_input("Patient Name")
+            f_uhid = st.text_input("UHID No.")
+            f_dr = st.text_input("Doctor Name")
+            f_date = st.date_input("Booking Date")
+            # Predecided Room option added
+            f_room = st.text_input("Pre-decided Bed ID (Optional)")
+            f_cat = st.selectbox("Category", ["SELF PAY", "OTHER"])
+            f_pref = st.selectbox("Bed Preference", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
             if st.form_submit_button("Save"):
-                db.collection("future_bookings").add({"name": f_name, "uhid": f_uhid, "dr": f_dr, "book_date": f_date.strftime('%Y-%m-%d'), "preference": f_pref})
+                db.collection("future_bookings").add({
+                    "name": f_name, "uhid": f_uhid, "dr": f_dr, "book_date": f_date.strftime('%Y-%m-%d'), 
+                    "category": f_cat, "preference": f_pref, "pref_bed": f_room
+                })
                 if 'cached_book_list' in st.session_state: del st.session_state['cached_book_list']
                 st.rerun()
 
     if book_list:
-        st.divider(); st.subheader("Manage Bookings")
+        st.divider(); st.subheader("Upcoming Bookings")
         remove_sel = st.selectbox("Delete Booking", ["Select"] + [b['name'] for b in book_list])
-        if st.button("Confirm Delete"):
+        if st.button("Delete Selected"):
             if remove_sel != "Select":
                 b_id = next(b['ID'] for b in book_list if b['name'] == remove_sel)
                 db.collection("future_bookings").document(b_id).delete()
                 if 'cached_book_list' in st.session_state: del st.session_state['cached_book_list']
                 st.rerun()
+        for b in book_list: st.info(f"**{b['name']}**\nUHID: {b.get('uhid','-')} | Bed: {b.get('pref_bed','-')}\nDate: {b['book_date']}")
 
     st.divider(); st.header("🛡️ Admin Panel")
     if st.text_input("Admin Password", type="password") == "GeimsAdmin99":
         show_dashboard = True 
-        
-        # RESTORED: DAILY REPORT DOWNLOAD
-        st.subheader("📋 Reports")
-        if st.button("Generate Handover Summary"):
-            done_cases = [r for r in req_list if r.get('bed_no')]
-            canc_cases = [r for r in req_list if r.get('status') == "CANCELLED"]
-            rep = f"GEIMS SHIFT HANDOVER REPORT - {today_date_str}\n"
-            rep += f"Total Done: {len(done_cases)} | Cancelled: {len(canc_cases)}\n\n--- COMPLETED ---\n"
-            for r in done_cases: rep += f"- {r['name']} ({r['category']}) -> Bed: {r['bed_no']}\n"
-            for r in canc_cases: rep += f"- {r['name']} | Status: CANCELLED\n"
-            st.download_button("📥 Download Handover Report", data=rep, file_name=f"GEIMS_Handover_{today_date_str}.txt")
+        if st.button("Download Handover Summary"):
+            done = [r for r in req_list if r.get('bed_no')]
+            rep = f"GEIMS SHIFT REPORT - {today_date_str}\n\n"
+            for r in done: rep += f"- {r['name']} ({r['category']}) -> Bed: {r['bed_no']}\n"
+            st.download_button("📥 Get Report", data=rep, file_name=f"Handover_{today_date_str}.txt")
         
         st.divider(); st.subheader("📝 Entry Modification")
         if req_list:
@@ -179,8 +193,7 @@ with st.sidebar:
             if st.button("Confirm Action"):
                 r_id = next(r['ID'] for r in req_list if r['name'] == target)
                 if action == "Delete Entry": db.collection("bed_requests").document(r_id).delete()
-                elif action in ["GEN-WARD ALLOTTED", "HOLD", "Mark as CANCELLED"]: 
-                    db.collection("bed_requests").document(r_id).update({"status": action, "bed_no": ""})
+                elif action in ["GEN-WARD ALLOTTED", "HOLD", "Mark as CANCELLED"]: db.collection("bed_requests").document(r_id).update({"status": action, "bed_no": ""})
                 else: db.collection("bed_requests").document(r_id).update({"remark": new_val})
                 if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                 st.rerun()
@@ -194,14 +207,13 @@ with st.sidebar:
                 r_id = next(r['ID'] for r in wait if r['name'] == p_sel)
                 db.collection("bed_requests").document(r_id).update({"bed_no": b_val, "status": "DONE"})
                 if b_val in all_bed_ids: db.collection("beds").document(b_val).set({"status": "ALLOTTED", "patient": p_sel})
-                if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
-                if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
+                for k in ['cached_req_list', 'cached_live_data']: 
+                    if k in st.session_state: del st.session_state[k]
                 st.rerun()
 
-        # RESTORED: MANUAL BED UPDATE
         st.divider(); st.subheader("⚙️ Manual Bed Update")
-        m_bed = st.selectbox("Select Bed ID", all_bed_ids); m_stat = st.selectbox("Update Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE", "RESTRICTED"]); m_name = st.text_input("Patient Name")
-        if st.button("Apply Manual Update"):
+        m_bed = st.selectbox("Select Bed ID", all_bed_ids); m_stat = st.selectbox("Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE", "RESTRICTED"]); m_name = st.text_input("Patient Name")
+        if st.button("Apply"):
             db.collection("beds").document(m_bed).set({"status": m_stat, "patient": m_name})
             if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
             st.rerun()
@@ -210,10 +222,6 @@ with st.sidebar:
         if st.button("RESET ALL BEDS"):
             for b in all_bed_ids: db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
             if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
-            st.rerun()
-        if st.button("CLEAR REQUEST LIST"):
-            for r in db.collection("bed_requests").stream(): r.reference.delete()
-            if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
             st.rerun()
 
 # --- 8. VISUAL DASHBOARD ---
