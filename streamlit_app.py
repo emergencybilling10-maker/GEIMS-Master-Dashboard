@@ -65,23 +65,22 @@ if st.button("🔄 Refresh Dashboard Data"):
         if key in st.session_state: del st.session_state[key]
     st.rerun()
 
-# --- 5. FUTURE BOOKING ALERT (WITH ACKNOWLEDGE) ---
+# --- 5. FUTURE BOOKING ALERT ---
 alerts = [b for b in book_list if b.get('book_date') == today_iso]
 for a in alerts:
     with st.container():
         st.markdown(f"""
             <div style="background-color: #FFEBEE; border: 2px solid #FF5252; padding: 15px; border-radius: 5px; margin-bottom: 5px; animation: blinker 1.5s linear infinite;">
                 <span style="color: #D32F2F; font-weight: bold; font-size: 18px;">🚨 TODAY'S BOOKING: {a.get('name', 'N/A')}</span><br>
-                <b>UHID:</b> {a.get('uhid','-')} | <b>Doctor:</b> {a.get('dr','-')} | <b>Pref Bed:</b> {a.get('pref_bed','-')}
+                <b>UHID:</b> {a.get('uhid','-')} | <b>Doctor:</b> {a.get('dr','-')} | <b>Bed ID:</b> {a.get('pref_bed','-')}
             </div>
             <style> @keyframes blinker {{ 50% {{ opacity: 0.5; }} }} </style>
         """, unsafe_allow_html=True)
-        
         if st.button(f"✅ Acknowledge & Admit: {a.get('name')}", key=f"ack_{a['ID']}"):
             db.collection("bed_requests").add({
                 "timestamp": datetime.now(tz), "name": a.get('name'), "category": a.get('category', 'OTHER'),
                 "dr_name": a.get('dr'), "shift_from": "FUTURE-BOOKING", "shift_to": a.get('preference', 'PVT'), 
-                "remark": f"Auto-admitted from booking (Bed: {a.get('pref_bed','-')})", "bed_no": "", "status": "WAITING", "date": today_date_str
+                "remark": f"Auto-admitted (Reserved Bed: {a.get('pref_bed','-')})", "bed_no": "", "status": "WAITING", "date": today_date_str
             })
             db.collection("future_bookings").document(a['ID']).delete()
             for k in ['cached_req_list', 'cached_book_list']: 
@@ -131,18 +130,18 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             r_cols[3].write(r.get('dr_name', '-')); r_cols[4].write(r.get('shift_from', '-')); r_cols[5].write(r.get('shift_to', '-'))
             r_cols[6].write(r.get('remark', '-')); r_cols[7].write(b_no if b_no else "-")
             color_map = {"DONE": "green", "CANCELLED": "red", "GEN-WARD ALLOTTED": "blue", "HOLD": "purple"}
-            r_cols[8].markdown(f"<span style='color:{color_map.get(status, 'orange')}; font-weight:bold;'>{status}</span>", unsafe_allow_html=True)
+            color = color_map.get(status, "orange")
+            r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{status}</span>", unsafe_allow_html=True)
             
-            # --- RESTORED A5 RECEIPT TEMPLATE ---
             if status == "DONE":
-                slip = f"""
-====================================
+                # UPDATED: Receipt format as per reference
+                slip = f"""====================================
       G.E.I.M.S (Bed Management)
       BED ALLOTMENT SLIP
 ====================================
 DATE: {today_date_str}
 
-PATIENT: {r.get('name')}
+PATIENT: {r['name']}
 
 ADMITTING DOCTOR : {r.get('dr_name', '-')}
 
@@ -150,27 +149,22 @@ SHIFTING FROM : {r.get('shift_from', '-')}
 
 SHIFTING TO : {r.get('shift_to', '-')}
 ------------------------------------
-BED :  {b_no}
+BED : {b_no}
 ====================================
 
-Note : this receipt is valid for today's only.
-"""
+Note : this reciept is vaild for today's only."""
                 r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
 
 # --- 7. SIDEBAR ---
 show_dashboard = False 
 with st.sidebar:
     st.header("📅 Future Booking Control")
-    with st.expander("📝 ADD FUTURE BOOKING", expanded=True):
+    with st.expander("📝 ADD FUTURE BOOKING"):
         with st.form("future_form", clear_on_submit=True):
             f_name = st.text_input("Patient Name"); f_uhid = st.text_input("UHID No."); f_dr = st.text_input("Doctor Name")
-            f_date = st.date_input("Booking Date"); f_room = st.text_input("Pre-decided Bed ID (Optional)")
-            f_cat = st.selectbox("Category", ["SELF PAY", "OTHER"]); f_pref = st.selectbox("Bed Preference", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
+            f_date = st.date_input("Booking Date"); f_room = st.text_input("Pre-decided Bed ID"); f_cat = st.selectbox("Category", ["SELF PAY", "OTHER"]); f_pref = st.selectbox("Bed Preference", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
             if st.form_submit_button("Save"):
-                db.collection("future_bookings").add({
-                    "name": f_name, "uhid": f_uhid, "dr": f_dr, "book_date": f_date.strftime('%Y-%m-%d'), 
-                    "category": f_cat, "preference": f_pref, "pref_bed": f_room
-                })
+                db.collection("future_bookings").add({"name": f_name, "uhid": f_uhid, "dr": f_dr, "book_date": f_date.strftime('%Y-%m-%d'), "category": f_cat, "preference": f_pref, "pref_bed": f_room})
                 if 'cached_book_list' in st.session_state: del st.session_state['cached_book_list']
                 st.rerun()
 
@@ -221,9 +215,15 @@ with st.sidebar:
                 st.rerun()
 
         st.divider(); st.subheader("⚙️ Manual Bed Update")
-        m_bed = st.selectbox("Select Bed ID", all_bed_ids); m_stat = st.selectbox("Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE", "RESTRICTED"]); m_name = st.text_input("Patient Name")
+        m_bed = st.selectbox("Select Bed ID", all_bed_ids); m_stat = st.selectbox("Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE", "RESTRICTED"]); m_name = st.text_input("Patient Name Override")
         if st.button("Apply"):
             db.collection("beds").document(m_bed).set({"status": m_stat, "patient": m_name})
+            if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
+            st.rerun()
+
+        st.divider(); st.error("⚠️ DATA RESET")
+        if st.button("RESET ALL BEDS"):
+            for b in all_bed_ids: db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
             if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
             st.rerun()
 
