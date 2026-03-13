@@ -200,23 +200,21 @@ with st.sidebar:
                 if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                 st.rerun()
         
-        # --- NEW: BED & STATUS ALTERATION TOOL ---
+        # --- UPDATED: BED & STATUS ALTERATION TOOL (Includes Non-Waiting Patients) ---
         st.divider(); st.subheader("🔄 Bed & Status Alteration")
-        done_patients = [r for r in req_list if r.get('bed_no')]
-        if done_patients:
-            alt_p = st.selectbox("Select Patient to Alter", [r['name'] for r in done_patients])
+        # Filters out "WAITING" to allow modification of CANCELLED, HOLD, etc.
+        alterable_patients = [r for r in req_list if r.get('status') != "WAITING"]
+        if alterable_patients:
+            alt_p = st.selectbox("Select Patient to Alter", [r['name'] for r in alterable_patients])
             c1, c2 = st.columns(2)
             new_b = c1.text_input("New Bed ID")
             new_s = c2.selectbox("Alter Status", ["DONE", "CANCELLED", "HOLD", "GEN-WARD ALLOTTED"])
             if st.button("Apply Alteration"):
-                p_data = next(r for r in done_patients if r['name'] == alt_p)
+                p_data = next(r for r in alterable_patients if r['name'] == alt_p)
                 old_bed = p_data.get('bed_no')
-                # 1. Update Request record
                 db.collection("bed_requests").document(p_data['ID']).update({"bed_no": new_b, "status": new_s})
-                # 2. Free up old bed if it was in the system
                 if old_bed in all_bed_ids:
                     db.collection("beds").document(old_bed).set({"status": "VACANT", "patient": ""})
-                # 3. Allot new bed if provided
                 if new_b and new_b in all_bed_ids:
                     db.collection("beds").document(new_b).set({"status": "ALLOTTED", "patient": alt_p})
                 st.success(f"Updated {alt_p} successfully.")
@@ -239,7 +237,7 @@ with st.sidebar:
 
         st.divider(); st.subheader("⚙️ Manual Bed Update")
         m_bed = st.selectbox("Select Bed ID", all_bed_ids); m_stat = st.selectbox("Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE", "RESTRICTED"]); m_name = st.text_input("Patient Name Override")
-        if st.button("Apply Manual Update"):
+        if st.button("Apply"):
             db.collection("beds").document(m_bed).set({"status": m_stat, "patient": m_name})
             if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
             st.rerun()
