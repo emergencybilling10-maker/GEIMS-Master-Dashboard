@@ -138,7 +138,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                 slip = f"""====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r['name']}\n------------------------------------\nBED:  {b_no}\n===================================="""
                 r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
 
-# --- 7. SIDEBAR (Full Admin Panel Restored) ---
+# --- 7. SIDEBAR ---
 show_dashboard = False 
 with st.sidebar:
     st.header("📅 Future Booking Control")
@@ -203,10 +203,26 @@ with st.sidebar:
                     if k in st.session_state: del st.session_state[k]
                 st.rerun()
 
-        # 📝 ENTRY MODIFICATION (Remark/Cancel)
+        # 🔑 RESTORED ALLOTMENT TOOLS
+        st.divider(); st.subheader("🔑 Allotment Tools")
+        wait = [r for r in req_list if not r.get('bed_no') and r.get('status') == "WAITING"]
+        if wait:
+            p_sel_allot = st.selectbox("Assign Patient to Bed", [r['name'] for r in wait], key="allot_p_sel")
+            b_val_allot = st.text_input("Enter Destination Bed ID", key="allot_b_id")
+            if st.button("Finalize Allotment"):
+                r_id_allot = next(r['ID'] for r in wait if r['name'] == p_sel_allot)
+                db.collection("bed_requests").document(r_id_allot).update({"bed_no": b_val_allot, "status": "DONE"})
+                if b_val_allot in all_bed_ids:
+                    db.collection("beds").document(b_val_allot).set({"status": "ALLOTTED", "patient": p_sel_allot})
+                for k in ['cached_req_list', 'cached_live_data']: 
+                    if k in st.session_state: del st.session_state[k]
+                st.success(f"Successfully allotted {p_sel_allot} to {b_val_allot}")
+                st.rerun()
+
+        # 📝 ENTRY MODIFICATION
         st.divider(); st.subheader("📝 Entry Modification")
         if req_list:
-            target = st.selectbox("Select Patient", [r['name'] for r in req_list], key="sb_mod")
+            target = st.selectbox("Select Patient to Edit", [r['name'] for r in req_list], key="sb_mod")
             action = st.radio("Action", ["Edit Remark", "Mark as CANCELLED", "Delete Entry"], horizontal=True)
             new_val = st.text_input("New Remark")
             if st.button("Confirm Modification"):
