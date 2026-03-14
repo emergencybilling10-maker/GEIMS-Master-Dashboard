@@ -41,7 +41,6 @@ if db:
         docs = db.collection("beds").stream()
         st.session_state.cached_live_data = {doc.id: doc.to_dict() for doc in docs}
         
-        # CHANGED: Order by 'position' primarily, then 'timestamp'
         reqs_stream = db.collection("bed_requests").order_by("position", direction=firestore.Query.ASCENDING).order_by("timestamp", direction=firestore.Query.ASCENDING).limit(100).stream()
         st.session_state.cached_req_list = [r.to_dict() | {'ID': r.id} for r in reqs_stream]
         
@@ -67,7 +66,7 @@ if st.button("🔄 Refresh Dashboard Data"):
         if key in st.session_state: del st.session_state[key]
     st.rerun()
 
-# --- 5. FUTURE BOOKING ALERT ---
+# --- 5. ALERTS ---
 alerts = [b for b in book_list if b.get('book_date') == today_iso]
 for a in alerts:
     with st.container():
@@ -112,8 +111,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                 db.collection("bed_requests").add({
                     "timestamp": datetime.now(tz), "name": p_name, "category": p_cat,
                     "dr_name": dr_name, "shift_from": p_fr, "shift_to": p_to, 
-                    "remark": rem, "bed_no": "", "status": "WAITING", "date": today_date_str,
-                    "position": 999 # Default high number for end of list
+                    "remark": rem, "bed_no": "", "status": "WAITING", "date": today_date_str, "position": 999
                 })
                 if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                 st.rerun()
@@ -140,7 +138,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                 slip = f"""====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r['name']}\n------------------------------------\nBED:  {b_no}\n===================================="""
                 r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
 
-# --- 7. SIDEBAR ---
+# --- 7. SIDEBAR (Full Admin Panel Restored) ---
 show_dashboard = False 
 with st.sidebar:
     st.header("📅 Future Booking Control")
@@ -167,19 +165,29 @@ with st.sidebar:
     if st.text_input("Admin Password", type="password") == "GeimsAdmin99":
         show_dashboard = True 
         
-        # --- NEW: MANUAL LIST REORDERING ---
-        st.subheader("↕️ Manual List Reordering")
+        # 📋 REPORTS
+        st.subheader("📋 Reports")
+        if st.button("Download Handover Summary"):
+            done = [r for r in req_list if r.get('bed_no')]
+            canc = [r for r in req_list if r.get('status') == "CANCELLED"]
+            rep = f"GEIMS SHIFT REPORT - {today_date_str}\n\n"
+            for r in done: rep += f"- {r['name']} ({r['category']}) -> Bed: {r['bed_no']}\n"
+            for r in canc: rep += f"- {r['name']} | Status: CANCELLED\n"
+            st.download_button("📥 Get Report", data=rep, file_name=f"Handover_{today_date_str}.txt")
+
+        # ↕️ LIST REORDERING
+        st.divider(); st.subheader("↕️ Manual List Reordering")
         if req_list:
             reorder_p = st.selectbox("Move Patient", [r['name'] for r in req_list], key="reorder_sel")
-            new_pos = st.number_input("New Position Number (1, 2, 3...)", min_value=1, value=10)
+            new_pos = st.number_input("New Position Number", min_value=1, value=10)
             if st.button("Apply Position Change"):
                 r_id = next(r['ID'] for r in req_list if r['name'] == reorder_p)
                 db.collection("bed_requests").document(r_id).update({"position": new_pos})
                 if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
-                st.success(f"Moved {reorder_p} to Position {new_pos}"); st.rerun()
+                st.rerun()
 
+        # 🔄 BED & STATUS ALTERATION
         st.divider(); st.subheader("🔄 Bed & Status Alteration")
-        # FIXED: Logic to include ALL status types
         if req_list:
             alt_p = st.selectbox("Select Patient to Alter", [r['name'] for r in req_list], key="alt_p_sel")
             c1, c2 = st.columns(2)
@@ -189,26 +197,43 @@ with st.sidebar:
                 p_data = next(r for r in req_list if r['name'] == alt_p)
                 old_bed = p_data.get('bed_no')
                 db.collection("bed_requests").document(p_data['ID']).update({"bed_no": new_b, "status": new_s})
-                if old_bed in all_bed_ids:
-                    db.collection("beds").document(old_bed).set({"status": "VACANT", "patient": ""})
-                if new_b and new_b in all_bed_ids:
-                    db.collection("beds").document(new_b).set({"status": "ALLOTTED", "patient": alt_p})
-                st.success(f"Updated {alt_p} successfully.")
+                if old_bed in all_bed_ids: db.collection("beds").document(old_bed).set({"status": "VACANT", "patient": ""})
+                if new_b and new_b in all_bed_ids: db.collection("beds").document(new_b).set({"status": "ALLOTTED", "patient": alt_p})
                 for k in ['cached_req_list', 'cached_live_data']: 
                     if k in st.session_state: del st.session_state[k]
                 st.rerun()
 
+        # 📝 ENTRY MODIFICATION (Remark/Cancel)
+        st.divider(); st.subheader("📝 Entry Modification")
+        if req_list:
+            target = st.selectbox("Select Patient", [r['name'] for r in req_list], key="sb_mod")
+            action = st.radio("Action", ["Edit Remark", "Mark as CANCELLED", "Delete Entry"], horizontal=True)
+            new_val = st.text_input("New Remark")
+            if st.button("Confirm Modification"):
+                r_id = next(r['ID'] for r in req_list if r['name'] == target)
+                if action == "Delete Entry": db.collection("bed_requests").document(r_id).delete()
+                elif action == "Mark as CANCELLED": db.collection("bed_requests").document(r_id).update({"status": "CANCELLED", "bed_no": ""})
+                else: db.collection("bed_requests").document(r_id).update({"remark": new_val})
+                if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
+                st.rerun()
+
+        # ⚙️ MANUAL BED UPDATE
         st.divider(); st.subheader("⚙️ Manual Bed Update")
         m_bed = st.selectbox("Select Bed ID", all_bed_ids); m_stat = st.selectbox("Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE", "RESTRICTED"]); m_name = st.text_input("Patient Name Override")
-        if st.button("Apply"):
+        if st.button("Apply Update"):
             db.collection("beds").document(m_bed).set({"status": m_stat, "patient": m_name})
             if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
             st.rerun()
 
+        # ⚠️ DATA RESET
         st.divider(); st.error("⚠️ DATA RESET")
         if st.button("RESET ALL BEDS"):
             for b in all_bed_ids: db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
             if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
+            st.rerun()
+        if st.button("CLEAR REQUEST LIST"):
+            for r in db.collection("bed_requests").stream(): r.reference.delete()
+            if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
             st.rerun()
 
 # --- 8. VISUAL DASHBOARD ---
