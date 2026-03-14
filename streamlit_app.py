@@ -33,7 +33,7 @@ bed_structure = {
 }
 all_bed_ids = [b for w in bed_structure.values() for b in w]
 
-# --- 3. FAILSAFE DATA FETCH ---
+# --- 3. FAILSAFE DATA FETCH (PYTHON SORTING) ---
 if db:
     if 'cached_live_data' not in st.session_state or 'cached_req_list' not in st.session_state:
         status_doc = db.collection("settings").document("dashboard_status").get()
@@ -41,11 +41,10 @@ if db:
         docs = db.collection("beds").stream()
         st.session_state.cached_live_data = {doc.id: doc.to_dict() for doc in docs}
         
-        # Optimized Fetch: Remove server-side sorting to fix FailedPrecondition error
+        # Temp Code Fix: Fetch without sorting to avoid FailedPrecondition
         reqs_stream = db.collection("bed_requests").limit(100).stream()
         raw_reqs = [r.to_dict() | {'ID': r.id} for r in reqs_stream]
-        
-        # Python-side sorting (No index needed)
+        # Local sorting by position (default 999) then time
         st.session_state.cached_req_list = sorted(raw_reqs, key=lambda x: (x.get('position', 999), x.get('timestamp', datetime.min)))
         
         book_stream = db.collection("future_bookings").order_by("book_date", direction=firestore.Query.ASCENDING).stream()
@@ -79,7 +78,6 @@ for a in alerts:
                 <span style="color: #D32F2F; font-weight: bold; font-size: 18px;">🚨 TODAY'S BOOKING: {a.get('name', 'N/A')}</span><br>
                 <b>UHID:</b> {a.get('uhid','-')} | <b>Doctor:</b> {a.get('dr','-')} | <b>Bed ID:</b> {a.get('pref_bed','-')}
             </div>
-            <style> @keyframes blinker {{ 50% {{ opacity: 0.5; }} }} </style>
         """, unsafe_allow_html=True)
         if st.button(f"✅ Acknowledge & Admit: {a.get('name')}", key=f"ack_{a['ID']}"):
             db.collection("bed_requests").add({
@@ -97,8 +95,8 @@ for a in alerts:
 with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
     pending = sum(1 for r in req_list if r.get('status') == "WAITING" and not r.get('bed_no'))
     allotted = sum(1 for r in req_list if r.get('bed_no') != "")
-    s1, s2 = st.columns(2)
-    s1.metric("Pending", pending); s2.metric("Done", allotted)
+    st.columns(2)[0].metric("Pending", pending)
+    st.columns(2)[1].metric("Done", allotted)
     st.divider()
 
     with st.form("new_req", clear_on_submit=True):
@@ -164,6 +162,7 @@ with st.sidebar:
                 db.collection("future_bookings").document(b_id).delete()
                 if 'cached_book_list' in st.session_state: del st.session_state['cached_book_list']
                 st.rerun()
+        for b in book_list: st.info(f"**{b['name']}**\nBed: {b.get('pref_bed','-')} | Date: {b['book_date']}")
 
     st.divider(); st.header("🛡️ Admin Panel")
     if st.text_input("Admin Password", type="password") == "GeimsAdmin99":
@@ -173,22 +172,24 @@ with st.sidebar:
         st.subheader("📋 Reports")
         if st.button("Download Handover Summary"):
             done = [r for r in req_list if r.get('bed_no')]
-            canc = [r for r in req_list if r.get('status') == "CANCELLED"]
             rep = f"GEIMS SHIFT REPORT - {today_date_str}\n\n"
             for r in done: rep += f"- {r['name']} ({r['category']}) -> Bed: {r['bed_no']}\n"
-            for r in canc: rep += f"- {r['name']} | Status: CANCELLED\n"
             st.download_button("📥 Get Report", data=rep, file_name=f"Handover_{today_date_str}.txt")
 
-        # ↕️ MANUAL LIST REORDERING
-        st.divider(); st.subheader("↕️ Manual List Reordering")
-        if req_list:
-            reorder_p = st.selectbox("Move Patient", [r['name'] for r in req_list], key="reorder_sel")
-            new_pos = st.number_input("New Position Number", min_value=1, value=10)
-            if st.button("Apply Position Change"):
-                r_id = next(r['ID'] for r in req_list if r['name'] == reorder_p)
-                db.collection("bed_requests").document(r_id).update({"position": new_pos})
+        # ↕️ UPDATED: MANUAL LIST SWITCHER (BETTER THAN POSITION NUMBERS)
+        st.divider(); st.subheader("↕️ Switch Patient Positions")
+        if len(req_list) >= 2:
+            p1_name = st.selectbox("Patient to move", [r['name'] for r in req_list], key="reorder_p1")
+            p2_name = st.selectbox("Switch with/Move before", [r['name'] for r in req_list], key="reorder_p2")
+            if st.button("Execute Switch"):
+                p1_data = next(r for r in req_list if r['name'] == p1_name)
+                p2_data = next(r for r in req_list if r['name'] == p2_name)
+                # Swap their position values
+                pos1, pos2 = p1_data.get('position', 999), p2_data.get('position', 999)
+                db.collection("bed_requests").document(p1_data['ID']).update({"position": pos2})
+                db.collection("bed_requests").document(p2_data['ID']).update({"position": pos1})
                 if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
-                st.rerun()
+                st.success(f"Swapped {p1_name} and {p2_name}!"); st.rerun()
 
         # 🔄 BED & STATUS ALTERATION
         st.divider(); st.subheader("🔄 Bed & Status Alteration")
