@@ -41,9 +41,12 @@ if db:
         docs = db.collection("beds").stream()
         st.session_state.cached_live_data = {doc.id: doc.to_dict() for doc in docs}
         
-        # Order by position number primarily
-        reqs_stream = db.collection("bed_requests").order_by("position", direction=firestore.Query.ASCENDING).order_by("timestamp", direction=firestore.Query.ASCENDING).limit(100).stream()
-        st.session_state.cached_req_list = [r.to_dict() | {'ID': r.id} for r in reqs_stream]
+        # Optimized Fetch: Remove server-side sorting to fix FailedPrecondition error
+        reqs_stream = db.collection("bed_requests").limit(100).stream()
+        raw_reqs = [r.to_dict() | {'ID': r.id} for r in reqs_stream]
+        
+        # Python-side sorting (No index needed)
+        st.session_state.cached_req_list = sorted(raw_reqs, key=lambda x: (x.get('position', 999), x.get('timestamp', datetime.min)))
         
         book_stream = db.collection("future_bookings").order_by("book_date", direction=firestore.Query.ASCENDING).stream()
         st.session_state.cached_book_list = [b.to_dict() | {'ID': b.id} for b in book_stream]
@@ -67,7 +70,7 @@ if st.button("🔄 Refresh Dashboard Data"):
         if key in st.session_state: del st.session_state[key]
     st.rerun()
 
-# --- 5. FUTURE BOOKING ALERT ---
+# --- 5. ALERTS ---
 alerts = [b for b in book_list if b.get('book_date') == today_iso]
 for a in alerts:
     with st.container():
@@ -180,12 +183,12 @@ with st.sidebar:
         st.divider(); st.subheader("↕️ Manual List Reordering")
         if req_list:
             reorder_p = st.selectbox("Move Patient", [r['name'] for r in req_list], key="reorder_sel")
-            new_pos = st.number_input("New Position Number (1, 2, 3...)", min_value=1, value=10)
+            new_pos = st.number_input("New Position Number", min_value=1, value=10)
             if st.button("Apply Position Change"):
                 r_id = next(r['ID'] for r in req_list if r['name'] == reorder_p)
                 db.collection("bed_requests").document(r_id).update({"position": new_pos})
                 if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
-                st.success(f"Moved {reorder_p} to Position {new_pos}"); st.rerun()
+                st.rerun()
 
         # 🔄 BED & STATUS ALTERATION
         st.divider(); st.subheader("🔄 Bed & Status Alteration")
@@ -209,7 +212,7 @@ with st.sidebar:
         wait = [r for r in req_list if not r.get('bed_no') and r.get('status') == "WAITING"]
         if wait:
             p_sel_allot = st.selectbox("Assign Patient to Bed", [r['name'] for r in wait], key="allot_p_sel")
-            b_val_allot = st.text_input("Enter Bed ID", key="allot_b_id")
+            b_val_allot = st.text_input("Enter Destination Bed ID", key="allot_b_id")
             if st.button("Finalize Allotment"):
                 r_id_allot = next(r['ID'] for r in wait if r['name'] == p_sel_allot)
                 db.collection("bed_requests").document(r_id_allot).update({"bed_no": b_val_allot, "status": "DONE"})
