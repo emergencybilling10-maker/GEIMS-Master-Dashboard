@@ -41,10 +41,9 @@ if db:
         docs = db.collection("beds").stream()
         st.session_state.cached_live_data = {doc.id: doc.to_dict() for doc in docs}
         
-        # Simple Fetch to avoid Index Error
+        # Simple fetch with local sort to prevent DB Index errors
         reqs_stream = db.collection("bed_requests").limit(100).stream()
         raw_reqs = [r.to_dict() | {'ID': r.id} for r in reqs_stream]
-        # Python-side sorting only
         st.session_state.cached_req_list = sorted(raw_reqs, key=lambda x: (x.get('position', 999), x.get('timestamp', datetime.min)))
         
         book_stream = db.collection("future_bookings").order_by("book_date", direction=firestore.Query.ASCENDING).stream()
@@ -73,13 +72,12 @@ if st.button("🔄 Refresh Dashboard Data"):
 alerts = [b for b in book_list if b.get('book_date') == today_iso]
 for a in alerts:
     with st.container():
-        st.markdown(f"""<div style="background-color: #FFEBEE; border: 2px solid #FF5252; padding: 15px; border-radius: 5px; margin-bottom: 5px;">
-        <span style="color: #D32F2F; font-weight: bold; font-size: 18px;">🚨 TODAY'S BOOKING: {a.get('name', 'N/A')}</span></div>""", unsafe_allow_html=True)
-        if st.button(f"✅ Acknowledge & Admit: {a.get('name')}", key=f"ack_{a['ID']}"):
+        st.markdown(f"<div style='background-color: #FFEBEE; border: 2px solid #FF5252; padding: 15px; border-radius: 5px; margin-bottom: 5px;'><b>🚨 TODAY'S BOOKING: {a.get('name', 'N/A')}</b></div>", unsafe_allow_html=True)
+        if st.button(f"✅ Admit: {a.get('name')}", key=f"ack_{a['ID']}"):
             db.collection("bed_requests").add({
                 "timestamp": datetime.now(tz), "name": a.get('name'), "category": a.get('category', 'OTHER'),
-                "dr_name": a.get('dr'), "shift_from": "FUTURE-BOOKING", "shift_to": a.get('preference', 'PVT'), 
-                "remark": f"Admitted (Reserved: {a.get('pref_bed','-')})", "bed_no": "", "status": "WAITING", 
+                "dr_name": a.get('dr'), "shift_from": "BOOKING", "shift_to": a.get('preference', 'PVT'), 
+                "remark": f"Reserved: {a.get('pref_bed','-')}", "bed_no": "", "status": "WAITING", 
                 "date": today_date_str, "position": 999
             })
             db.collection("future_bookings").document(a['ID']).delete()
@@ -152,14 +150,38 @@ with st.sidebar:
     if st.text_input("Admin Password", type="password") == "GeimsAdmin99":
         show_dashboard = True 
         
-        # 📋 REPORTS
-        if st.button("Download Handover Summary"):
-            done = [r for r in req_list if r.get('bed_no')]
-            rep = f"GEIMS SHIFT REPORT - {today_date_str}\n\n"
-            for r in done: rep += f"- {r['name']} -> Bed: {r['bed_no']}\n"
-            st.download_button("📥 Get Report", data=rep, file_name=f"Handover_{today_date_str}.txt")
+        # 📋 NEW MODIFICATION HUB (Replaced old alteration)
+        st.subheader("🛠️ Patient Modification Hub")
+        if req_list:
+            # Select by Doc ID to ensure uniqueness
+            p_map = {f"{r['name']} ({r.get('bed_no', 'No Bed')})": r['ID'] for r in req_list}
+            selected_label = st.selectbox("Select Patient Record", list(p_map.keys()))
+            target_id = p_map[selected_label]
+            target_data = next(r for r in req_list if r['ID'] == target_id)
 
-        # ↕️ MANUAL LIST SWITCHER
+            new_status = st.selectbox("New Status", ["WAITING", "DONE", "HOLD", "CANCELLED", "GEN-WARD ALLOTTED"], index=["WAITING", "DONE", "HOLD", "CANCELLED", "GEN-WARD ALLOTTED"].index(target_data.get('status', 'WAITING')))
+            new_bed = st.text_input("New Bed ID", value=target_data.get('bed_no', ''))
+            
+            if st.button("🔥 FORCE UPDATE RECORD"):
+                # 1. Update Bed Collection first
+                old_bed = target_data.get('bed_no')
+                if old_bed and old_bed in all_bed_ids:
+                    db.collection("beds").document(old_bed).set({"status": "VACANT", "patient": ""})
+                if new_bed and new_bed in all_bed_ids:
+                    db.collection("beds").document(new_bed).set({"status": "ALLOTTED", "patient": target_data['name']})
+                
+                # 2. Update Request Collection
+                db.collection("bed_requests").document(target_id).update({
+                    "status": new_status,
+                    "bed_no": new_bed
+                })
+                
+                # 3. Wipe memory and reload
+                for k in ['cached_req_list', 'cached_live_data']: 
+                    if k in st.session_state: del st.session_state[k]
+                st.success("Record Synchronized."); st.rerun()
+
+        # ↕️ SWITCH POSITIONS
         st.divider(); st.subheader("↕️ Switch Positions")
         if len(req_list) >= 2:
             p1_name = st.selectbox("Move Patient", [r['name'] for r in req_list], key="reorder_p1")
@@ -172,28 +194,6 @@ with st.sidebar:
                 if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                 st.rerun()
 
-        # 🔄 BED & STATUS ALTERATION (FORCED LOGIC)
-        st.divider(); st.subheader("🔄 Bed & Status Alteration")
-        if req_list:
-            alt_p = st.selectbox("Select Patient", [r['name'] for r in req_list], key="alt_p_sel")
-            c1, c2 = st.columns(2)
-            new_b = c1.text_input("New Bed ID")
-            new_s = c2.selectbox("Alter Status", ["DONE", "WAITING", "CANCELLED", "HOLD", "GEN-WARD ALLOTTED"])
-            if st.button("Apply Alteration"):
-                p_data = next(r for r in req_list if r['name'] == alt_p)
-                doc_ref = db.collection("bed_requests").document(p_data['ID'])
-                
-                # Direct force update
-                doc_ref.update({"status": new_s})
-                if new_b: 
-                    doc_ref.update({"bed_no": new_b})
-                    if p_data.get('bed_no') in all_bed_ids: db.collection("beds").document(p_data['bed_no']).set({"status": "VACANT", "patient": ""})
-                    if new_b in all_bed_ids: db.collection("beds").document(new_b).set({"status": "ALLOTTED", "patient": alt_p})
-                
-                for k in ['cached_req_list', 'cached_live_data']: 
-                    if k in st.session_state: del st.session_state[k]
-                st.success("Updated!"); st.rerun()
-
         # 🔑 ALLOTMENT TOOLS
         st.divider(); st.subheader("🔑 Allotment Tools")
         wait = [r for r in req_list if not r.get('bed_no') and r.get('status') == "WAITING"]
@@ -204,8 +204,7 @@ with st.sidebar:
                 r_id = next(r['ID'] for r in wait if r['name'] == p_sel)
                 db.collection("bed_requests").document(r_id).update({"bed_no": b_val, "status": "DONE"})
                 if b_val in all_bed_ids: db.collection("beds").document(b_val).set({"status": "ALLOTTED", "patient": p_sel})
-                for k in ['cached_req_list', 'cached_live_data']: 
-                    if k in st.session_state: del st.session_state[k]
+                if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                 st.rerun()
 
         # ⚙️ MANUAL BED UPDATE
@@ -213,13 +212,6 @@ with st.sidebar:
         m_bed = st.selectbox("Select Bed", all_bed_ids); m_stat = st.selectbox("Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE", "RESTRICTED"]); m_name = st.text_input("Name Override")
         if st.button("Apply Update"):
             db.collection("beds").document(m_bed).set({"status": m_stat, "patient": m_name})
-            if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
-            st.rerun()
-
-        # ⚠️ DATA RESET
-        st.divider(); st.error("⚠️ DATA RESET")
-        if st.button("RESET ALL BEDS"):
-            for b in all_bed_ids: db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
             if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
             st.rerun()
 
