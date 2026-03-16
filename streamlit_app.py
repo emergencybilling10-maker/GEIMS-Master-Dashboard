@@ -137,7 +137,21 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             color = color_map.get(status, "orange")
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{status}</span>", unsafe_allow_html=True)
             if status == "DONE":
-                slip = f"""====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r['name']}\n------------------------------------\nBED:  {b_no}\n===================================="""
+                slip = f"""====================================
+      G.E.I.M.S (Bed Management)
+
+      BED ALLOTMENT SLIP
+====================================
+DATE: {today_date_str}
+
+PATIENT: {r['name']}
+
+Admitting Doctor Name : {r.get('dr_name', '-')}
+------------------------------------
+BED: {b_no}
+====================================
+
+NOTE: This acknowledgment slip is valid for today only"""
                 r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
 
 # --- 7. SIDEBAR ---
