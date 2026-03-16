@@ -54,7 +54,7 @@ if db:
 else:
     st.error("Database Connection Failed."); st.stop()
 
-# --- 4. HEADER ---
+# --- 4. HEADER & MANUAL REFRESH ---
 tz = pytz.timezone('Asia/Kolkata')
 today_date_str = datetime.now(tz).strftime('%d/%m/%Y')
 today_iso = datetime.now(tz).strftime('%Y-%m-%d')
@@ -187,33 +187,38 @@ with st.sidebar:
                 if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                 st.rerun()
 
-        # 🔄 BED & STATUS ALTERATION (FIXED HOLD/DONE LOGIC)
+        # 🔄 BED & STATUS ALTERATION (RE-CODED FOR PRECISION)
         st.divider(); st.subheader("🔄 Bed & Status Alteration")
         if req_list:
-            alt_p = st.selectbox("Select Patient to Alter", [r['name'] for r in req_list], key="alt_p_sel")
+            alt_p = st.selectbox("Select Patient", [r['name'] for r in req_list], key="alt_p_sel")
             c1, c2 = st.columns(2)
-            new_b = c1.text_input("New Bed ID (leave blank to keep current)")
-            new_s = c2.selectbox("Alter Status", ["DONE", "WAITING", "CANCELLED", "HOLD", "GEN-WARD ALLOTTED"])
+            new_b = c1.text_input("New Bed ID (Optional)")
+            new_s = c2.selectbox("Set New Status", ["DONE", "WAITING", "CANCELLED", "HOLD", "GEN-WARD ALLOTTED"])
+            
             if st.button("Apply Alteration"):
-                p_data = next(r for r in req_list if r['name'] == alt_p)
-                old_bed = p_data.get('bed_no')
+                target_doc = next(r for r in req_list if r['name'] == alt_p)
+                old_bed = target_doc.get('bed_no')
                 
-                # FIXED: Status now updates regardless of Bed ID change
-                update_dict = {"status": new_s}
-                if new_b: update_dict["bed_no"] = new_b
-                
-                db.collection("bed_requests").document(p_data['ID']).update(update_dict)
-                
-                # Manage Bed Status independently
+                # 1. Update the record in 'bed_requests'
+                # Force update both fields to ensure change is registered
+                update_payload = {"status": new_s}
                 if new_b:
+                    update_payload["bed_no"] = new_b
+                db.collection("bed_requests").document(target_doc['ID']).update(update_payload)
+                
+                # 2. Update the 'beds' collection status
+                if new_b:
+                    # Clear old bed
                     if old_bed and old_bed in all_bed_ids:
                         db.collection("beds").document(old_bed).set({"status": "VACANT", "patient": ""})
+                    # Allot new bed
                     if new_b in all_bed_ids:
                         db.collection("beds").document(new_b).set({"status": "ALLOTTED", "patient": alt_p})
                 
-                st.success(f"Successfully altered {alt_p} to {new_s}")
+                # 3. Clear session cache to show changes
                 for k in ['cached_req_list', 'cached_live_data']: 
                     if k in st.session_state: del st.session_state[k]
+                st.success(f"Updated {alt_p} to {new_s}")
                 st.rerun()
 
         # 🔑 ALLOTMENT TOOLS
