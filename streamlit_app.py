@@ -120,7 +120,6 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         for idx, r in enumerate(req_list):
             if sq and sq not in r.get('name', '').lower(): continue
             
-            # Status Logic
             current_status = r.get('status', 'WAITING')
             b_no = r.get('bed_no', '')
             if b_no and current_status == "WAITING": current_status = "DONE"
@@ -135,6 +134,20 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             if current_status == "DONE":
                 slip = f"""====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r['name']}\n------------------------------------\nBED:  {b_no}\n===================================="""
                 r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
+
+# --- NEW: CONSENT FORM PANEL ---
+st.subheader("📝 ADMISSION CONSENT FORMS")
+c_col1, c_col2, c_col3, c_col4, c_col5 = st.columns(5)
+with c_col1:
+    st.download_button("💳 1 - SELF PAY", "Consent Content for Self Pay...", file_name="Consent_SelfPay.txt")
+with c_col2:
+    st.download_button("💰 2 - CGHS CASH", "Consent Content for CGHS Cash...", file_name="Consent_CGHSCash.txt")
+with c_col3:
+    st.download_button("🎖️ 3 - ECHS", "Consent Content for ECHS...", file_name="Consent_ECHS.txt")
+with c_col4:
+    st.download_button("🏥 4 - CGHS-CREDIT & PSU", "Consent Content for CGHS Credit...", file_name="Consent_CGHS_Credit.txt")
+with c_col5:
+    st.download_button("🏢 5 - TPA", "Consent Content for TPA...", file_name="Consent_TPA.txt")
 
 # --- 7. SIDEBAR ---
 show_dashboard = False 
