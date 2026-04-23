@@ -135,19 +135,58 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                 slip = f"""====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r['name']}\n------------------------------------\nBED:  {b_no}\n===================================="""
                 r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
 
-# --- NEW: CONSENT FORM PANEL ---
-st.subheader("📝 ADMISSION CONSENT FORMS")
+# --- NEW: PDF CONSENT FORM PANEL ---
+st.subheader("📝 ADMISSION CONSENT FORMS (PDF)")
+
+# Function to safely read PDF files from your GitHub folder
+def get_pdf_data(file_name):
+    try:
+        with open(file_name, "rb") as f:
+            return f.read()
+    except FileNotFoundError:
+        return None
+
 c_col1, c_col2, c_col3, c_col4, c_col5 = st.columns(5)
+
+# 1. SELF PAY
+pdf_self = get_pdf_data("consent_self_pay.pdf")
 with c_col1:
-    st.download_button("💳 1 - SELF PAY", "Consent Content for Self Pay...", file_name="Consent_SelfPay.txt")
+    if pdf_self:
+        st.download_button("💳 1 - SELF PAY", pdf_self, file_name="Consent_SelfPay.pdf", mime="application/pdf")
+    else:
+        st.error("Self Pay PDF Missing")
+
+# 2. CGHS CASH
+pdf_cghs_cash = get_pdf_data("consent_cghs_cash.pdf")
 with c_col2:
-    st.download_button("💰 2 - CGHS CASH", "Consent Content for CGHS Cash...", file_name="Consent_CGHSCash.txt")
+    if pdf_cghs_cash:
+        st.download_button("💰 2 - CGHS CASH", pdf_cghs_cash, file_name="Consent_CGHS_Cash.pdf", mime="application/pdf")
+    else:
+        st.error("CGHS Cash PDF Missing")
+
+# 3. ECHS
+pdf_echs = get_pdf_data("consent_echs.pdf")
 with c_col3:
-    st.download_button("🎖️ 3 - ECHS", "Consent Content for ECHS...", file_name="Consent_ECHS.txt")
+    if pdf_echs:
+        st.download_button("🎖️ 3 - ECHS", pdf_echs, file_name="Consent_ECHS.pdf", mime="application/pdf")
+    else:
+        st.error("ECHS PDF Missing")
+
+# 4. CGHS CREDIT & PSU
+pdf_cghs_credit = get_pdf_data("consent_cghs_credit.pdf")
 with c_col4:
-    st.download_button("🏥 4 - CGHS-CREDIT & PSU", "Consent Content for CGHS Credit...", file_name="Consent_CGHS_Credit.txt")
+    if pdf_cghs_credit:
+        st.download_button("🏥 4 - CREDIT/PSU", pdf_cghs_credit, file_name="Consent_CGHS_Credit.pdf", mime="application/pdf")
+    else:
+        st.error("Credit PDF Missing")
+
+# 5. TPA
+pdf_tpa = get_pdf_data("consent_tpa.pdf")
 with c_col5:
-    st.download_button("🏢 5 - TPA", "Consent Content for TPA...", file_name="Consent_TPA.txt")
+    if pdf_tpa:
+        st.download_button("🏢 5 - TPA", pdf_tpa, file_name="Consent_TPA.pdf", mime="application/pdf")
+    else:
+        st.error("TPA PDF Missing")
 
 # --- 7. SIDEBAR ---
 show_dashboard = False 
