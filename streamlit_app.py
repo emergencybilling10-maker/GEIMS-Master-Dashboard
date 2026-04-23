@@ -136,7 +136,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                 r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
 
 # --- NEW: PDF CONSENT FORM PANEL ---
-st.subheader("📝 ADMISSION CONSENT FORMS (PDF)")
+st.subheader("📝 ADMISSION & SHIFTING CONSENT FORMS (PDF)")
 
 # Function to safely read PDF files from your GitHub folder
 def get_pdf_data(file_name):
