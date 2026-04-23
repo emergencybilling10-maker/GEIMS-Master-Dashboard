@@ -176,7 +176,7 @@ with c_col3:
 pdf_cghs_credit = get_pdf_data("consent_cghs_credit.pdf")
 with c_col4:
     if pdf_cghs_credit:
-        st.download_button("🏥 4 - CREDIT/PSU", pdf_cghs_credit, file_name="Consent_CGHS_Credit.pdf", mime="application/pdf")
+        st.download_button("🏥 4 - CGHS CREDIT/PSU", pdf_cghs_credit, file_name="Consent_CGHS_Credit.pdf", mime="application/pdf")
     else:
         st.error("Credit PDF Missing")
 
