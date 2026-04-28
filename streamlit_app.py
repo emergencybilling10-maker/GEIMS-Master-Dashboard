@@ -6,54 +6,8 @@ import json
 from datetime import datetime
 import pytz
 
-# --- PREMIUM UI ENHANCEMENTS (NEW) ---
+# Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
-
-# Live Professional Background & Premium Styling
-st.markdown("""
-    <style>
-    /* Animated Gradient Background */
-    .stApp {
-        background: linear-gradient(-45deg, #f3f7f9, #eef2f3, #e0eafc, #cfdef3);
-        background-size: 400% 400%;
-        animation: gradient 15s ease infinite;
-    }
-    @keyframes gradient {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-    }
-
-    /* Card Styling for Containers */
-    div.stButton > button {
-        border-radius: 8px;
-        border: 1px solid #004a99;
-        background-color: white;
-        transition: all 0.3s ease;
-    }
-    div.stButton > button:hover {
-        background-color: #004a99;
-        color: white;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-
-    /* Premium Typography */
-    h1, h2, h3 {
-        color: #1e3a8a;
-        font-family: 'Inter', sans-serif;
-    }
-    
-    /* Status Badge Styling */
-    .status-box {
-        border-radius: 10px;
-        padding: 15px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        border: 1px solid rgba(255,255,255,0.3);
-        backdrop-filter: blur(5px);
-    }
-    </style>
-    """, unsafe_allow_html=True)
 
 # --- 1. SECURE DATABASE CONNECTION ---
 @st.cache_resource
@@ -105,15 +59,8 @@ tz = pytz.timezone('Asia/Kolkata')
 today_date_str = datetime.now(tz).strftime('%d/%m/%Y')
 today_iso = datetime.now(tz).strftime('%Y-%m-%d')
 
-# Premium Header Container
-st.markdown(f"""
-    <div style="background: rgba(30, 58, 138, 0.9); padding: 25px; border-radius: 15px; text-align: center; color: white; margin-bottom: 25px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
-        <h1 style='color: white; margin: 0; font-size: 2.5rem;'>GEIMS BED TRACKER</h1>
-        <p style='margin: 0; opacity: 0.8;'>Excellence in Patient Care Management</p>
-        <hr style="margin: 10px auto; width: 50px; border: 2px solid #60a5fa;">
-        <h3 style='color: #60a5fa; margin: 0;'>{today_date_str}</h3>
-    </div>
-""", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; margin-bottom: 0;'>Bed Management Dashboard</h1>", unsafe_allow_html=True)
+st.markdown(f"<p style='text-align: center;'><b>Current Date: {today_date_str}</b></p>", unsafe_allow_html=True)
 
 if st.button("🔄 Refresh Dashboard Data"):
     for key in ['cached_live_data', 'is_live', 'cached_req_list', 'cached_book_list']:
@@ -124,7 +71,7 @@ if st.button("🔄 Refresh Dashboard Data"):
 alerts = [b for b in book_list if b.get('book_date') == today_iso]
 for a in alerts:
     with st.container():
-        st.markdown(f"<div style='background-color: #FFF5F5; border-left: 5px solid #F87171; padding: 15px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'><b>🚨 TODAY'S BOOKING: {a.get('name', 'N/A')}</b></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background-color: #FFEBEE; border: 2px solid #FF5252; padding: 15px; border-radius: 5px; margin-bottom: 5px;'><b>🚨 TODAY'S BOOKING: {a.get('name', 'N/A')}</b></div>", unsafe_allow_html=True)
         if st.button(f"✅ Admit: {a.get('name')}", key=f"ack_{a['ID']}"):
             db.collection("bed_requests").add({
                 "timestamp": datetime.now(tz), "name": a.get('name'), "category": a.get('category', 'OTHER'),
@@ -141,13 +88,12 @@ for a in alerts:
 with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
     pending = sum(1 for r in req_list if r.get('status') == "WAITING" and not r.get('bed_no'))
     allotted = sum(1 for r in req_list if r.get('status') == "DONE")
-    m_col1, m_col2 = st.columns(2)
-    m_col1.metric("Pending Waiting", pending, delta_color="inverse")
-    m_col2.metric("Total Allotted", allotted)
+    st.columns(2)[0].metric("Pending", pending)
+    st.columns(2)[1].metric("Done", allotted)
     st.divider()
 
     with st.form("new_req", clear_on_submit=True):
-        st.markdown("### 📝 New Shifting Request Entry")
+        st.subheader("New Shifting Request Entry")
         c1, c2 = st.columns(2)
         p_name = c1.text_input("PATIENT NAME")
         p_cat = c1.selectbox("CATEGORY", ["SELF PAY", "ECHS", "UPCL", "UJVN", "CGHS CASH", "BHEL", "ONGC", "TPA", "CGHS", "ICAR", "AYUSHMAN", "OTHER"])
@@ -155,7 +101,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         p_fr = c2.selectbox("SHIFT FROM", ["CCU", "EMERGENCY", "DELUXE", "PVT", "SEMI PVT", "HDU", "OPD", "ICU", "WARD", "LR", "OTHER"])
         p_to = c2.selectbox("SHIFTING TO", ["DELUXE", "PRIVATE", "SEMI-PRIVATE", "GEN-WARD"])
         rem = c2.text_input("REMARK")
-        if st.form_submit_button("🚀 Submit Request"):
+        if st.form_submit_button("Submit Request"):
             if p_name:
                 db.collection("bed_requests").add({
                     "timestamp": datetime.now(tz), "name": p_name, "category": p_cat,
@@ -170,8 +116,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         sq = st.text_input("🔍 Search Patient Name", "").lower()
         h_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1, 1.5])
         headers = ["S.N", "NAME", "CAT", "DR", "FROM", "TO", "REMARK", "BED", "STATUS", "ACTION"]
-        for col, h in zip(h_cols, headers): col.markdown(f"**{h}**")
-        
+        for col, h in zip(h_cols, headers): col.write(f"**{h}**")
         for idx, r in enumerate(req_list):
             if sq and sq not in r.get('name', '').lower(): continue
             
@@ -183,17 +128,17 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             r_cols[0].write(idx + 1); r_cols[1].write(r.get('name', '-')); r_cols[2].write(r.get('category', '-'))
             r_cols[3].write(r.get('dr_name', '-')); r_cols[4].write(r.get('shift_from', '-')); r_cols[5].write(r.get('shift_to', '-'))
             r_cols[6].write(r.get('remark', '-')); r_cols[7].write(b_no if b_no else "-")
-            color_map = {"DONE": "#10b981", "CANCELLED": "#ef4444", "GEN-WARD ALLOTTED": "#3b82f6", "HOLD": "#8b5cf6"}
-            color = color_map.get(current_status, "#f59e0b")
-            r_cols[8].markdown(f"<span style='background-color:{color}; color:white; padding: 2px 8px; border-radius:12px; font-size:10px; font-weight:bold;'>{current_status}</span>", unsafe_allow_html=True)
+            color_map = {"DONE": "green", "CANCELLED": "red", "GEN-WARD ALLOTTED": "blue", "HOLD": "purple"}
+            color = color_map.get(current_status, "orange")
+            r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{current_status}</span>", unsafe_allow_html=True)
             if current_status == "DONE":
                 slip = f"""====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r['name']}\n------------------------------------\nBED:  {b_no}\n===================================="""
                 r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
 
 # --- NEW: PDF CONSENT FORM PANEL ---
-st.markdown("### 📝 CONSENT FORMS")
-c_col1, c_col2, c_col3, c_col4, c_col5 = st.columns(5)
+st.subheader("📝 ADMISSION & SHIFTING CONSENT FORMS (PDF)")
 
+# Function to safely read PDF files from your GitHub folder
 def get_pdf_data(file_name):
     try:
         with open(file_name, "rb") as f:
@@ -201,31 +146,57 @@ def get_pdf_data(file_name):
     except FileNotFoundError:
         return None
 
-# Mapping for premium button icons
-pdf_configs = [
-    ("💳 SELF PAY", "consent_self_pay.pdf", "Consent_SelfPay.pdf", c_col1),
-    ("💰 CGHS CASH", "consent_cghs_cash.pdf", "Consent_CGHS_Cash.pdf", c_col2),
-    ("🎖️ ECHS", "consent_echs.pdf", "Consent_ECHS.pdf", c_col3),
-    ("🏥 CGHS/PSU", "consent_cghs_credit.pdf", "Consent_CGHS_Credit.pdf", c_col4),
-    ("🏢 TPA", "consent_tpa.pdf", "Consent_TPA.pdf", c_col5)
-]
+c_col1, c_col2, c_col3, c_col4, c_col5 = st.columns(5)
 
-for label, file, dl_name, col in pdf_configs:
-    data = get_pdf_data(file)
-    with col:
-        if data: st.download_button(label, data, file_name=dl_name, mime="application/pdf")
-        else: st.error("Missing")
+# 1. SELF PAY
+pdf_self = get_pdf_data("consent_self_pay.pdf")
+with c_col1:
+    if pdf_self:
+        st.download_button("💳 1 - SELF PAY", pdf_self, file_name="Consent_SelfPay.pdf", mime="application/pdf")
+    else:
+        st.error("Self Pay PDF Missing")
+
+# 2. CGHS CASH
+pdf_cghs_cash = get_pdf_data("consent_cghs_cash.pdf")
+with c_col2:
+    if pdf_cghs_cash:
+        st.download_button("💰 2 - CGHS CASH", pdf_cghs_cash, file_name="Consent_CGHS_Cash.pdf", mime="application/pdf")
+    else:
+        st.error("CGHS Cash PDF Missing")
+
+# 3. ECHS
+pdf_echs = get_pdf_data("consent_echs.pdf")
+with c_col3:
+    if pdf_echs:
+        st.download_button("🎖️ 3 - ECHS", pdf_echs, file_name="Consent_ECHS.pdf", mime="application/pdf")
+    else:
+        st.error("ECHS PDF Missing")
+
+# 4. CGHS CREDIT & PSU
+pdf_cghs_credit = get_pdf_data("consent_cghs_credit.pdf")
+with c_col4:
+    if pdf_cghs_credit:
+        st.download_button("🏥 4 - CGHS CREDIT/PSU", pdf_cghs_credit, file_name="Consent_CGHS_Credit.pdf", mime="application/pdf")
+    else:
+        st.error("Credit PDF Missing")
+
+# 5. TPA
+pdf_tpa = get_pdf_data("consent_tpa.pdf")
+with c_col5:
+    if pdf_tpa:
+        st.download_button("🏢 5 - TPA", pdf_tpa, file_name="Consent_TPA.pdf", mime="application/pdf")
+    else:
+        st.error("TPA PDF Missing")
 
 # --- 7. SIDEBAR ---
 show_dashboard = False 
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/2966/2966327.png", width=100)
-    st.header("Control Center")
+    st.header("📅 Future Booking Control")
     with st.expander("📝 ADD FUTURE BOOKING"):
         with st.form("future_form", clear_on_submit=True):
             f_name = st.text_input("Patient Name"); f_uhid = st.text_input("UHID No."); f_dr = st.text_input("Doctor Name")
             f_date = st.date_input("Booking Date"); f_room = st.text_input("Pre-decided Bed ID"); f_cat = st.selectbox("Category", ["SELF PAY", "OTHER"]); f_pref = st.selectbox("Bed Preference", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
-            if st.form_submit_button("Save Booking"):
+            if st.form_submit_button("Save"):
                 db.collection("future_bookings").add({"name": f_name, "uhid": f_uhid, "dr": f_dr, "book_date": f_date.strftime('%Y-%m-%d'), "category": f_cat, "preference": f_pref, "pref_bed": f_room})
                 if 'cached_book_list' in st.session_state: del st.session_state['cached_book_list']
                 st.rerun()
@@ -319,23 +290,15 @@ with st.sidebar:
 
 # --- 8. VISUAL DASHBOARD ---
 if show_dashboard:
-    status_colors = {"VACANT": "#FFFFFF", "BOOKED": "#90EE90", "ALLOTTED": "#1e293b", "DISCHARGE": "#ADD8E6", "MAINTENANCE": "#E0E0E0", "RESTRICTED": "#ef4444"}
-    st.markdown("---")
+    status_colors = {"VACANT": "#FFFFFF", "BOOKED": "#90EE90", "ALLOTTED": "#000000", "DISCHARGE": "#ADD8E6", "MAINTENANCE": "#E0E0E0", "RESTRICTED": "#FF0000"}
     st.title("🏥 Live Bed Status")
     for wing, beds in bed_structure.items():
-        st.markdown(f"#### {wing}")
-        cols = st.columns(5)
+        st.subheader(wing); cols = st.columns(5)
         for i, bed in enumerate(beds):
             data = live_data.get(bed, {"status": "VACANT", "patient": ""})
             bg = status_colors.get(data.get('status', 'VACANT'), "#FFFFFF")
-            txt = "white" if data.get('status') in ["ALLOTTED", "RESTRICTED"] else "#1e293b"
+            txt = "white" if data.get('status') in ["ALLOTTED", "RESTRICTED"] else "black"
             with cols[i % 5]:
-                st.markdown(f"""
-                    <div style="background-color:{bg}; color:{txt}; padding:10px; border:1px solid rgba(0,0,0,0.1); border-radius:12px; text-align:center; min-height:100px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom:10px;">
-                        <div style="font-size:11px; font-weight:800; text-transform:uppercase;">{bed}</div>
-                        <div style="font-size:10px; opacity:0.8; margin-top:5px;">{data.get("status", "VACANT")}</div>
-                        <div style="font-size:11px; font-weight:bold; margin-top:8px;">{data.get("patient", "")}</div>
-                    </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f'<div style="background-color:{bg}; color:{txt}; padding:5px; border:1px solid #ccc; border-radius:5px; text-align:center; height:85px; font-size:11px;"><b>{bed}</b><br><span style="font-size:10px; font-weight:bold;">{data.get("status", "VACANT")}</span><br><i style="font-size:10px;">{data.get("patient", "")}</i></div>', unsafe_allow_html=True)
 else:
-    st.info("🔒 Admin Access Required: Please enter the password in the sidebar to view the Live Bed Status map.")
+    st.info("🔒 Enter Admin Password in sidebar to view Bed Status.")
