@@ -9,86 +9,6 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- BATMAN GOTHAM TACTICAL THEME ---
-st.markdown("""
-    <style>
-    /* Global Background - Carbon Fiber Feel */
-    .stApp {
-        background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
-        color: #e0e0e0;
-    }
-
-    /* Gotham Style Headers */
-    h1, h2, h3 {
-        font-family: 'Helvetica Neue', sans-serif;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        color: #f2f2f2 !important;
-        font-weight: 900 !important;
-        border-left: 5px solid #ffcc00;
-        padding-left: 15px;
-    }
-
-    /* Tactical Cards & Expanders */
-    div[data-testid="stExpander"], .stForm, div[data-testid="stMetricValue"] {
-        background: rgba(30, 30, 30, 0.7) !important;
-        border: 1px solid #333 !important;
-        border-radius: 4px !important;
-        backdrop-filter: blur(10px);
-    }
-
-    /* Tactical Yellow Metrics */
-    [data-testid="stMetricValue"] {
-        color: #ffcc00 !important;
-        font-family: 'Courier New', monospace;
-    }
-
-    /* Batman Buttons - Matte Black & Gold */
-    .stButton>button {
-        background-color: #111 !important;
-        color: #ffcc00 !important;
-        border: 1px solid #ffcc00 !important;
-        border-radius: 2px !important;
-        text-transform: uppercase;
-        font-weight: bold;
-        transition: all 0.3s ease;
-        letter-spacing: 1px;
-    }
-
-    .stButton>button:hover {
-        background-color: #ffcc00 !important;
-        color: #111 !important;
-        box-shadow: 0 0 15px rgba(255, 204, 0, 0.4);
-    }
-
-    /* Sidebar Styling */
-    section[data-testid="stSidebar"] {
-        background-color: #050505 !important;
-        border-right: 1px solid #222;
-    }
-
-    /* Status Span Highlights */
-    .status-badge {
-        padding: 5px 10px;
-        border-radius: 3px;
-        font-family: 'Courier New', monospace;
-        font-weight: bold;
-    }
-
-    /* Custom Table Look */
-    .stMarkdown div p b {
-        color: #ffcc00;
-    }
-    
-    /* Input Fields - Tactical Look */
-    input, select, textarea {
-        background-color: #121212 !important;
-        color: white !important;
-        border: 1px solid #444 !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
 # --- 1. SECURE DATABASE CONNECTION ---
 @st.cache_resource
 def get_db():
@@ -139,10 +59,10 @@ tz = pytz.timezone('Asia/Kolkata')
 today_date_str = datetime.now(tz).strftime('%d/%m/%Y')
 today_iso = datetime.now(tz).strftime('%Y-%m-%d')
 
-st.markdown("<h1 style='text-align: center; margin-bottom: 0;'>GEIMS COMMAND CENTER</h1>", unsafe_allow_html=True)
-st.markdown(f"<p style='text-align: center; color:#ffcc00;'><b>TACTICAL LOG: {today_date_str}</b></p>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; margin-bottom: 0;'>Bed Management Dashboard</h1>", unsafe_allow_html=True)
+st.markdown(f"<p style='text-align: center;'><b>Current Date: {today_date_str}</b></p>", unsafe_allow_html=True)
 
-if st.button("🔄 REFRESH COMMAND DATA"):
+if st.button("🔄 Refresh Dashboard Data"):
     for key in ['cached_live_data', 'is_live', 'cached_req_list', 'cached_book_list']:
         if key in st.session_state: del st.session_state[key]
     st.rerun()
@@ -151,8 +71,8 @@ if st.button("🔄 REFRESH COMMAND DATA"):
 alerts = [b for b in book_list if b.get('book_date') == today_iso]
 for a in alerts:
     with st.container():
-        st.markdown(f"<div style='background-color: rgba(255, 204, 0, 0.1); border: 2px solid #ffcc00; padding: 15px; border-radius: 5px; margin-bottom: 5px; color: #ffcc00;'><b>🚨 PRIORITY ADMISSION: {a.get('name', 'N/A')}</b></div>", unsafe_allow_html=True)
-        if st.button(f"✅ DEPLOY ADMIT: {a.get('name')}", key=f"ack_{a['ID']}"):
+        st.markdown(f"<div style='background-color: #FFEBEE; border: 2px solid #FF5252; padding: 15px; border-radius: 5px; margin-bottom: 5px;'><b>🚨 TODAY'S BOOKING: {a.get('name', 'N/A')}</b></div>", unsafe_allow_html=True)
+        if st.button(f"✅ Admit: {a.get('name')}", key=f"ack_{a['ID']}"):
             db.collection("bed_requests").add({
                 "timestamp": datetime.now(tz), "name": a.get('name'), "category": a.get('category', 'OTHER'),
                 "dr_name": a.get('dr'), "shift_from": "BOOKING", "shift_to": a.get('preference', 'PVT'), 
@@ -165,15 +85,15 @@ for a in alerts:
             st.rerun()
 
 # --- 6. MANAGE PATIENT REQUESTS ---
-with st.expander("📂 TACTICAL PATIENT QUEUE", expanded=True):
+with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
     pending = sum(1 for r in req_list if r.get('status') == "WAITING" and not r.get('bed_no'))
     allotted = sum(1 for r in req_list if r.get('status') == "DONE")
-    st.columns(2)[0].metric("PENDING PROTOCOLS", pending)
-    st.columns(2)[1].metric("STABILIZED", allotted)
+    st.columns(2)[0].metric("Pending", pending)
+    st.columns(2)[1].metric("Done", allotted)
     st.divider()
 
     with st.form("new_req", clear_on_submit=True):
-        st.subheader("INITIALIZE NEW SHIFT PROTOCOL")
+        st.subheader("New Shifting Request Entry")
         c1, c2 = st.columns(2)
         p_name = c1.text_input("PATIENT NAME")
         p_cat = c1.selectbox("CATEGORY", ["SELF PAY", "ECHS", "UPCL", "UJVN", "CGHS CASH", "BHEL", "ONGC", "TPA", "CGHS", "ICAR", "AYUSHMAN", "OTHER"])
@@ -181,7 +101,7 @@ with st.expander("📂 TACTICAL PATIENT QUEUE", expanded=True):
         p_fr = c2.selectbox("SHIFT FROM", ["CCU", "EMERGENCY", "DELUXE", "PVT", "SEMI PVT", "HDU", "OPD", "ICU", "WARD", "LR", "OTHER"])
         p_to = c2.selectbox("SHIFTING TO", ["DELUXE", "PRIVATE", "SEMI-PRIVATE", "GEN-WARD"])
         rem = c2.text_input("REMARK")
-        if st.form_submit_button("SUBMIT LOG"):
+        if st.form_submit_button("Submit Request"):
             if p_name:
                 db.collection("bed_requests").add({
                     "timestamp": datetime.now(tz), "name": p_name, "category": p_cat,
@@ -193,7 +113,7 @@ with st.expander("📂 TACTICAL PATIENT QUEUE", expanded=True):
 
     if req_list:
         st.divider()
-        sq = st.text_input("🔍 SCAN PATIENT NAME", "").lower()
+        sq = st.text_input("🔍 Search Patient Name", "").lower()
         h_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1, 1.5])
         headers = ["S.N", "NAME", "CAT", "DR", "FROM", "TO", "REMARK", "BED", "STATUS", "ACTION"]
         for col, h in zip(h_cols, headers): col.write(f"**{h}**")
@@ -208,16 +128,17 @@ with st.expander("📂 TACTICAL PATIENT QUEUE", expanded=True):
             r_cols[0].write(idx + 1); r_cols[1].write(r.get('name', '-')); r_cols[2].write(r.get('category', '-'))
             r_cols[3].write(r.get('dr_name', '-')); r_cols[4].write(r.get('shift_from', '-')); r_cols[5].write(r.get('shift_to', '-'))
             r_cols[6].write(r.get('remark', '-')); r_cols[7].write(b_no if b_no else "-")
-            color_map = {"DONE": "#00FF41", "CANCELLED": "#FF0000", "GEN-WARD ALLOTTED": "#00CCFF", "HOLD": "#9933FF"}
-            color = color_map.get(current_status, "#ffcc00")
+            color_map = {"DONE": "green", "CANCELLED": "red", "GEN-WARD ALLOTTED": "blue", "HOLD": "purple"}
+            color = color_map.get(current_status, "orange")
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{current_status}</span>", unsafe_allow_html=True)
             if current_status == "DONE":
-                slip = f"""====================================\n      G.E.I.M.S (COMMAND CENTER)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r['name']}\n------------------------------------\nBED:  {b_no}\n===================================="""
-                r_cols[9].download_button("💾 LOG", data=slip, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
+                slip = f"""====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r['name']}\n------------------------------------\nBED:  {b_no}\n===================================="""
+                r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
 
-# --- PDF CONSENT FORM PANEL ---
-st.subheader("📑 TACTICAL CONSENT FORMS")
+# --- NEW: PDF CONSENT FORM PANEL ---
+st.subheader("📝 ADMISSION & SHIFTING CONSENT FORMS (PDF)")
 
+# Function to safely read PDF files from your GitHub folder
 def get_pdf_data(file_name):
     try:
         with open(file_name, "rb") as f:
@@ -227,77 +148,92 @@ def get_pdf_data(file_name):
 
 c_col1, c_col2, c_col3, c_col4, c_col5 = st.columns(5)
 
-# (All download buttons use the same logic as your original)
+# 1. SELF PAY
 pdf_self = get_pdf_data("consent_self_pay.pdf")
 with c_col1:
-    if pdf_self: st.download_button("💳 1 - SELF PAY", pdf_self, file_name="Consent_SelfPay.pdf", mime="application/pdf")
-    else: st.error("FILE MISSING")
+    if pdf_self:
+        st.download_button("💳 1 - SELF PAY", pdf_self, file_name="Consent_SelfPay.pdf", mime="application/pdf")
+    else:
+        st.error("Self Pay PDF Missing")
 
+# 2. CGHS CASH
 pdf_cghs_cash = get_pdf_data("consent_cghs_cash.pdf")
 with c_col2:
-    if pdf_cghs_cash: st.download_button("💰 2 - CGHS CASH", pdf_cghs_cash, file_name="Consent_CGHS_Cash.pdf", mime="application/pdf")
-    else: st.error("FILE MISSING")
+    if pdf_cghs_cash:
+        st.download_button("💰 2 - CGHS CASH", pdf_cghs_cash, file_name="Consent_CGHS_Cash.pdf", mime="application/pdf")
+    else:
+        st.error("CGHS Cash PDF Missing")
 
+# 3. ECHS
 pdf_echs = get_pdf_data("consent_echs.pdf")
 with c_col3:
-    if pdf_echs: st.download_button("🎖️ 3 - ECHS", pdf_echs, file_name="Consent_ECHS.pdf", mime="application/pdf")
-    else: st.error("FILE MISSING")
+    if pdf_echs:
+        st.download_button("🎖️ 3 - ECHS", pdf_echs, file_name="Consent_ECHS.pdf", mime="application/pdf")
+    else:
+        st.error("ECHS PDF Missing")
 
+# 4. CGHS CREDIT & PSU
 pdf_cghs_credit = get_pdf_data("consent_cghs_credit.pdf")
 with c_col4:
-    if pdf_cghs_credit: st.download_button("🏥 4 - CGHS/PSU", pdf_cghs_credit, file_name="Consent_CGHS_Credit.pdf", mime="application/pdf")
-    else: st.error("FILE MISSING")
+    if pdf_cghs_credit:
+        st.download_button("🏥 4 - CGHS CREDIT/PSU", pdf_cghs_credit, file_name="Consent_CGHS_Credit.pdf", mime="application/pdf")
+    else:
+        st.error("Credit PDF Missing")
 
+# 5. TPA
 pdf_tpa = get_pdf_data("consent_tpa.pdf")
 with c_col5:
-    if pdf_tpa: st.download_button("🏢 5 - TPA", pdf_tpa, file_name="Consent_TPA.pdf", mime="application/pdf")
-    else: st.error("FILE MISSING")
+    if pdf_tpa:
+        st.download_button("🏢 5 - TPA", pdf_tpa, file_name="Consent_TPA.pdf", mime="application/pdf")
+    else:
+        st.error("TPA PDF Missing")
 
 # --- 7. SIDEBAR ---
 show_dashboard = False 
 with st.sidebar:
-    st.header("⚡ COMMAND CONTROL")
-    with st.expander("📝 ADD FUTURE DEPLOYMENT"):
+    st.header("📅 Future Booking Control")
+    with st.expander("📝 ADD FUTURE BOOKING"):
         with st.form("future_form", clear_on_submit=True):
             f_name = st.text_input("Patient Name"); f_uhid = st.text_input("UHID No."); f_dr = st.text_input("Doctor Name")
             f_date = st.date_input("Booking Date"); f_room = st.text_input("Pre-decided Bed ID"); f_cat = st.selectbox("Category", ["SELF PAY", "OTHER"]); f_pref = st.selectbox("Bed Preference", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
-            if st.form_submit_button("LOCK DATA"):
+            if st.form_submit_button("Save"):
                 db.collection("future_bookings").add({"name": f_name, "uhid": f_uhid, "dr": f_dr, "book_date": f_date.strftime('%Y-%m-%d'), "category": f_cat, "preference": f_pref, "pref_bed": f_room})
                 if 'cached_book_list' in st.session_state: del st.session_state['cached_book_list']
                 st.rerun()
 
-    st.divider(); st.header("🛡️ MASTER ACCESS")
-    if st.text_input("Enter Passkey", type="password") == "GeimsAdmin99":
+    st.divider(); st.header("🛡️ Admin Panel")
+    if st.text_input("Admin Password", type="password") == "GeimsAdmin99":
         show_dashboard = True 
         
-        # Reports
-        st.subheader("📊 LOG REPORTS")
-        if st.button("GET HANDOVER LOG"):
+        # 📋 REPORTS
+        st.subheader("📋 Reports")
+        if st.button("Download Handover Summary"):
             done = [r for r in req_list if r.get('bed_no')]
             rep = f"GEIMS SHIFT REPORT - {today_date_str}\n\n"
             for r in done: rep += f"- {r['name']} -> Bed: {r['bed_no']}\n"
-            st.download_button("📥 DOWNLOAD LOG", data=rep, file_name=f"Handover_{today_date_str}.txt")
+            st.download_button("📥 Get Report", data=rep, file_name=f"Handover_{today_date_str}.txt")
 
-        # Switches & Mods (Original logic kept)
-        st.divider(); st.subheader("↕️ REORDER QUEUE")
+        # ↕️ MANUAL LIST SWITCHER
+        st.divider(); st.subheader("↕️ Switch Positions")
         if len(req_list) >= 2:
             p1_name = st.selectbox("Move Patient", [r['name'] for r in req_list], key="reorder_p1")
             p2_name = st.selectbox("With Patient", [r['name'] for r in req_list], key="reorder_p2")
-            if st.button("CONFIRM SWAP"):
+            if st.button("Execute Switch"):
                 p1 = next(r for r in req_list if r['name'] == p1_name); p2 = next(r for r in req_list if r['name'] == p2_name)
                 db.collection("bed_requests").document(p1['ID']).update({"position": p2.get('position', 999)})
                 db.collection("bed_requests").document(p2['ID']).update({"position": p1.get('position', 999)})
                 if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                 st.rerun()
 
-        st.divider(); st.subheader("🛠️ ARCHIVE MODIFIER")
+        # 🛠️ PATIENT MODIFICATION HUB
+        st.divider(); st.subheader("🛠️ Patient Modification Hub")
         if req_list:
             p_map = {f"{r['name']} ({r.get('bed_no', 'No Bed')})": r['ID'] for r in req_list}
-            selected_label = st.selectbox("Select Record", list(p_map.keys()))
+            selected_label = st.selectbox("Select Patient Record", list(p_map.keys()))
             target_id = p_map[selected_label]; target_data = next(r for r in req_list if r['ID'] == target_id)
             new_status = st.selectbox("Change Status", ["WAITING", "DONE", "HOLD", "CANCELLED", "GEN-WARD ALLOTTED"], index=["WAITING", "DONE", "HOLD", "CANCELLED", "GEN-WARD ALLOTTED"].index(target_data.get('status', 'WAITING')))
-            new_bed = st.text_input("Override Bed ID", value=target_data.get('bed_no', ''))
-            if st.button("🔥 SYNC GLOBAL DATA"):
+            new_bed = st.text_input("Change Bed ID", value=target_data.get('bed_no', ''))
+            if st.button("🔥 SYNC & UPDATE"):
                 old_bed = target_data.get('bed_no')
                 if old_bed and old_bed in all_bed_ids: db.collection("beds").document(old_bed).set({"status": "VACANT", "patient": ""})
                 if new_bed and new_bed in all_bed_ids and new_status == "DONE": db.collection("beds").document(new_bed).set({"status": "ALLOTTED", "patient": target_data['name']})
@@ -306,25 +242,63 @@ with st.sidebar:
                     if k in st.session_state: del st.session_state[k]
                 st.rerun()
 
+        # 🔑 ALLOTMENT TOOLS
+        st.divider(); st.subheader("🔑 Allotment Tools")
+        wait = [r for r in req_list if not r.get('bed_no') and r.get('status') == "WAITING"]
+        if wait:
+            p_sel = st.selectbox("Assign Patient", [r['name'] for r in wait])
+            b_val = st.text_input("Bed ID", key="allot_b")
+            if st.button("Finalize Allotment"):
+                r_id = next(r['ID'] for r in wait if r['name'] == p_sel)
+                db.collection("bed_requests").document(r_id).update({"bed_no": b_val, "status": "DONE"})
+                if b_val in all_bed_ids: db.collection("beds").document(b_val).set({"status": "ALLOTTED", "patient": p_sel})
+                if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
+                st.rerun()
+
+        # 📝 ENTRY MODIFICATION (Remark/Cancel)
+        st.divider(); st.subheader("📝 Entry Modification")
+        if req_list:
+            target = st.selectbox("Select Patient to Edit", [r['name'] for r in req_list], key="sb_mod")
+            action = st.radio("Action", ["Edit Remark", "Mark as CANCELLED", "Delete Entry"], horizontal=True)
+            new_val = st.text_input("New Remark")
+            if st.button("Confirm Modification"):
+                r_id = next(r['ID'] for r in req_list if r['name'] == target)
+                if action == "Delete Entry": db.collection("bed_requests").document(r_id).delete()
+                elif action == "Mark as CANCELLED": db.collection("bed_requests").document(r_id).update({"status": "CANCELLED", "bed_no": ""})
+                else: db.collection("bed_requests").document(r_id).update({"remark": new_val})
+                if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
+                st.rerun()
+
+        # ⚙️ MANUAL BED UPDATE
+        st.divider(); st.subheader("⚙️ Manual Bed Update")
+        m_bed = st.selectbox("Select Bed", all_bed_ids); m_stat = st.selectbox("Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE", "RESTRICTED"]); m_name = st.text_input("Name Override")
+        if st.button("Apply Bed Update"):
+            db.collection("beds").document(m_bed).set({"status": m_stat, "patient": m_name})
+            if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
+            st.rerun()
+
+        # ⚠️ DATA RESET
+        st.divider(); st.error("⚠️ DATA RESET")
+        if st.button("RESET ALL BEDS"):
+            for b in all_bed_ids: db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
+            if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
+            st.rerun()
+        if st.button("CLEAR REQUEST LIST"):
+            for r in db.collection("bed_requests").stream(): r.reference.delete()
+            if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
+            st.rerun()
+
 # --- 8. VISUAL DASHBOARD ---
 if show_dashboard:
-    status_colors = {"VACANT": "#1a1a1a", "BOOKED": "#ffcc00", "ALLOTTED": "#ffcc00", "DISCHARGE": "#00CCFF", "MAINTENANCE": "#333", "RESTRICTED": "#FF0000"}
-    st.title("🛰️ LIVE TACTICAL BED MAP")
+    status_colors = {"VACANT": "#FFFFFF", "BOOKED": "#90EE90", "ALLOTTED": "#000000", "DISCHARGE": "#ADD8E6", "MAINTENANCE": "#E0E0E0", "RESTRICTED": "#FF0000"}
+    st.title("🏥 Live Bed Status")
     for wing, beds in bed_structure.items():
         st.subheader(wing); cols = st.columns(5)
         for i, bed in enumerate(beds):
             data = live_data.get(bed, {"status": "VACANT", "patient": ""})
-            bg = status_colors.get(data.get('status', 'VACANT'), "#1a1a1a")
-            # If Allotted, we invert for Batman vibe
-            txt = "#1a1a1a" if data.get('status') in ["ALLOTTED", "BOOKED"] else "#ffcc00"
-            border = "1px solid #ffcc00"
+            bg = status_colors.get(data.get('status', 'VACANT'), "#FFFFFF")
+            txt = "white" if data.get('status') in ["ALLOTTED", "RESTRICTED"] else "black"
             with cols[i % 5]:
-                st.markdown(f'''
-                    <div style="background-color:{bg}; color:{txt}; padding:8px; border:{border}; border-radius:2px; text-align:center; height:90px;">
-                        <b style="font-size:12px;">{bed}</b><br>
-                        <span style="font-size:10px; font-family:monospace;">{data.get("status", "VACANT")}</span><br>
-                        <i style="font-size:10px;">{data.get("patient", "")}</i>
-                    </div>
-                ''', unsafe_allow_html=True)
+                st.markdown(f'<div style="background-color:{bg}; color:{txt}; padding:5px; border:1px solid #ccc; border-radius:5px; text-align:center; height:85px; font-size:11px;"><b>{bed}</b><br><span style="font-size:10px; font-weight:bold;">{data.get("status", "VACANT")}</span><br><i style="font-size:10px;">{data.get("patient", "")}</i></div>', unsafe_allow_html=True)
 else:
-    st.info("🔒 ENCRYPTED: ENTER MASTER PASSKEY IN COMMAND SIDEBAR.")
+    st.info("🔒 Enter Admin Password in sidebar to view Bed Status.")
