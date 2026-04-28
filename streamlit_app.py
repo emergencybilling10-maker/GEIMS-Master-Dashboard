@@ -9,75 +9,6 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- ADVANCED TECHNICAL LIGHT THEME (3D NEUMORPHIC) ---
-st.markdown("""
-<style>
-    /* Base Light Tech Theme */
-    .stApp {
-        background-color: #f0f2f6;
-        color: #31333f;
-    }
-
-    /* 3D Neumorphic Button Master Theme */
-    .stButton > button {
-        background: #f0f2f6 !important;
-        color: #31333f !important;
-        border: none !important;
-        padding: 0.6em 1.2em !important;
-        border-radius: 12px !important;
-        box-shadow: 7px 7px 15px #cbced1, -7px -7px 15px #ffffff !important;
-        transition: all 0.3s ease-in-out !important;
-        font-weight: 600 !important;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-
-    /* Animation & Click Effect */
-    .stButton > button:active {
-        box-shadow: inset 4px 4px 8px #cbced1, inset -4px -4px 8px #ffffff !important;
-        transform: translateY(2px);
-    }
-
-    /* Glowing Effect on Hover */
-    .stButton > button:hover {
-        color: #007bff !important;
-        box-shadow: 0px 0px 20px rgba(0, 123, 255, 0.4), 7px 7px 15px #cbced1, -7px -7px 15px #ffffff !important;
-    }
-
-    /* Advanced Containers */
-    div[data-testid="stExpander"], .stForm {
-        background: #f0f2f6 !important;
-        border-radius: 20px !important;
-        border: none !important;
-        box-shadow: 9px 9px 16px #cbced1, -9px -9px 16px #ffffff !important;
-        padding: 20px !important;
-        margin-bottom: 20px !important;
-    }
-
-    /* Technical Metric Glow */
-    div[data-testid="stMetricValue"] {
-        color: #007bff !important;
-        text-shadow: 0 0 5px rgba(0,123,255,0.2);
-    }
-
-    /* Bed Card Grid Styling */
-    .bed-card {
-        background: #f0f2f6;
-        border-radius: 10px;
-        box-shadow: 4px 4px 8px #cbced1, -4px -4px 8px #ffffff;
-        transition: transform 0.2s;
-    }
-    .bed-card:hover {
-        transform: scale(1.02);
-    }
-
-    /* Table Headers Styling */
-    .stMarkdown b {
-        color: #007bff;
-    }
-</style>
-""", unsafe_allow_html=True)
-
 # --- 1. SECURE DATABASE CONNECTION ---
 @st.cache_resource
 def get_db():
@@ -368,6 +299,6 @@ if show_dashboard:
             bg = status_colors.get(data.get('status', 'VACANT'), "#FFFFFF")
             txt = "white" if data.get('status') in ["ALLOTTED", "RESTRICTED"] else "black"
             with cols[i % 5]:
-                st.markdown(f'<div class="bed-card" style="background-color:{bg}; color:{txt}; padding:5px; border:1px solid #ccc; border-radius:10px; text-align:center; height:85px; font-size:11px;"><b>{bed}</b><br><span style="font-size:10px; font-weight:bold;">{data.get("status", "VACANT")}</span><br><i style="font-size:10px;">{data.get("patient", "")}</i></div>', unsafe_allow_html=True)
+                st.markdown(f'<div style="background-color:{bg}; color:{txt}; padding:5px; border:1px solid #ccc; border-radius:5px; text-align:center; height:85px; font-size:11px;"><b>{bed}</b><br><span style="font-size:10px; font-weight:bold;">{data.get("status", "VACANT")}</span><br><i style="font-size:10px;">{data.get("patient", "")}</i></div>', unsafe_allow_html=True)
 else:
     st.info("🔒 Enter Admin Password in sidebar to view Bed Status.")
