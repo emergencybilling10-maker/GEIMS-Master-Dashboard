@@ -9,53 +9,6 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- 0. PREMIUM LIVE WALLPAPER ENGINE ---
-# Replace the URL below with a direct link to an MP4 or GIF file
-VIDEO_URL = "PASTE_YOUR_DIRECT_VIDEO_URL_HERE" 
-
-st.markdown(f"""
-    <style>
-    /* Full Screen Video Background */
-    #myVideo {{
-        position: fixed;
-        right: 0;
-        bottom: 0;
-        min-width: 100%; 
-        min-height: 100%;
-        z-index: -1;
-        filter: brightness(0.5) contrast(1.2); /* Adjust for look */
-        object-fit: cover;
-    }}
-
-    /* Premium Glass-Morphism Content Area */
-    .main .block-container {{
-        background: rgba(255, 255, 255, 0.7); 
-        backdrop-filter: blur(15px); /* This creates the premium blur effect */
-        -webkit-backdrop-filter: blur(15px);
-        padding: 3rem;
-        border-radius: 25px;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        margin-top: 30px;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
-    }}
-
-    /* Sidebar Transparency */
-    [data-testid="stSidebar"] {{
-        background-color: rgba(255, 255, 255, 0.2);
-        backdrop-filter: blur(10px);
-    }}
-    
-    /* Center the Title for a cleaner look */
-    h1 {{
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-    }}
-    </style>
-
-    <video autoplay muted loop id="myVideo">
-        <source src="{VIDEO_URL}" type="video/mp4">
-    </video>
-""", unsafe_allow_html=True)
-
 # --- 1. SECURE DATABASE CONNECTION ---
 @st.cache_resource
 def get_db():
@@ -185,7 +138,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
 # --- NEW: PDF CONSENT FORM PANEL ---
 st.subheader("📝 ADMISSION & SHIFTING CONSENT FORMS (PDF)")
 
-# Function to safely read PDF files
+# Function to safely read PDF files from your GitHub folder
 def get_pdf_data(file_name):
     try:
         with open(file_name, "rb") as f:
@@ -194,7 +147,46 @@ def get_pdf_data(file_name):
         return None
 
 c_col1, c_col2, c_col3, c_col4, c_col5 = st.columns(5)
-# ... [Original PDF Download Logic Remains Here] ...
+
+# 1. SELF PAY
+pdf_self = get_pdf_data("consent_self_pay.pdf")
+with c_col1:
+    if pdf_self:
+        st.download_button("💳 1 - SELF PAY", pdf_self, file_name="Consent_SelfPay.pdf", mime="application/pdf")
+    else:
+        st.error("Self Pay PDF Missing")
+
+# 2. CGHS CASH
+pdf_cghs_cash = get_pdf_data("consent_cghs_cash.pdf")
+with c_col2:
+    if pdf_cghs_cash:
+        st.download_button("💰 2 - CGHS CASH", pdf_cghs_cash, file_name="Consent_CGHS_Cash.pdf", mime="application/pdf")
+    else:
+        st.error("CGHS Cash PDF Missing")
+
+# 3. ECHS
+pdf_echs = get_pdf_data("consent_echs.pdf")
+with c_col3:
+    if pdf_echs:
+        st.download_button("🎖️ 3 - ECHS", pdf_echs, file_name="Consent_ECHS.pdf", mime="application/pdf")
+    else:
+        st.error("ECHS PDF Missing")
+
+# 4. CGHS CREDIT & PSU
+pdf_cghs_credit = get_pdf_data("consent_cghs_credit.pdf")
+with c_col4:
+    if pdf_cghs_credit:
+        st.download_button("🏥 4 - CGHS CREDIT/PSU", pdf_cghs_credit, file_name="Consent_CGHS_Credit.pdf", mime="application/pdf")
+    else:
+        st.error("Credit PDF Missing")
+
+# 5. TPA
+pdf_tpa = get_pdf_data("consent_tpa.pdf")
+with c_col5:
+    if pdf_tpa:
+        st.download_button("🏢 5 - TPA", pdf_tpa, file_name="Consent_TPA.pdf", mime="application/pdf")
+    else:
+        st.error("TPA PDF Missing")
 
 # --- 7. SIDEBAR ---
 show_dashboard = False 
@@ -212,7 +204,89 @@ with st.sidebar:
     st.divider(); st.header("🛡️ Admin Panel")
     if st.text_input("Admin Password", type="password") == "GeimsAdmin99":
         show_dashboard = True 
-        # ... [Original Admin Panel Logic Remains Here] ...
+        
+        # 📋 REPORTS
+        st.subheader("📋 Reports")
+        if st.button("Download Handover Summary"):
+            done = [r for r in req_list if r.get('bed_no')]
+            rep = f"GEIMS SHIFT REPORT - {today_date_str}\n\n"
+            for r in done: rep += f"- {r['name']} -> Bed: {r['bed_no']}\n"
+            st.download_button("📥 Get Report", data=rep, file_name=f"Handover_{today_date_str}.txt")
+
+        # ↕️ MANUAL LIST SWITCHER
+        st.divider(); st.subheader("↕️ Switch Positions")
+        if len(req_list) >= 2:
+            p1_name = st.selectbox("Move Patient", [r['name'] for r in req_list], key="reorder_p1")
+            p2_name = st.selectbox("With Patient", [r['name'] for r in req_list], key="reorder_p2")
+            if st.button("Execute Switch"):
+                p1 = next(r for r in req_list if r['name'] == p1_name); p2 = next(r for r in req_list if r['name'] == p2_name)
+                db.collection("bed_requests").document(p1['ID']).update({"position": p2.get('position', 999)})
+                db.collection("bed_requests").document(p2['ID']).update({"position": p1.get('position', 999)})
+                if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
+                st.rerun()
+
+        # 🛠️ PATIENT MODIFICATION HUB
+        st.divider(); st.subheader("🛠️ Patient Modification Hub")
+        if req_list:
+            p_map = {f"{r['name']} ({r.get('bed_no', 'No Bed')})": r['ID'] for r in req_list}
+            selected_label = st.selectbox("Select Patient Record", list(p_map.keys()))
+            target_id = p_map[selected_label]; target_data = next(r for r in req_list if r['ID'] == target_id)
+            new_status = st.selectbox("Change Status", ["WAITING", "DONE", "HOLD", "CANCELLED", "GEN-WARD ALLOTTED"], index=["WAITING", "DONE", "HOLD", "CANCELLED", "GEN-WARD ALLOTTED"].index(target_data.get('status', 'WAITING')))
+            new_bed = st.text_input("Change Bed ID", value=target_data.get('bed_no', ''))
+            if st.button("🔥 SYNC & UPDATE"):
+                old_bed = target_data.get('bed_no')
+                if old_bed and old_bed in all_bed_ids: db.collection("beds").document(old_bed).set({"status": "VACANT", "patient": ""})
+                if new_bed and new_bed in all_bed_ids and new_status == "DONE": db.collection("beds").document(new_bed).set({"status": "ALLOTTED", "patient": target_data['name']})
+                db.collection("bed_requests").document(target_id).update({"status": new_status, "bed_no": new_bed})
+                for k in ['cached_req_list', 'cached_live_data']: 
+                    if k in st.session_state: del st.session_state[k]
+                st.rerun()
+
+        # 🔑 ALLOTMENT TOOLS
+        st.divider(); st.subheader("🔑 Allotment Tools")
+        wait = [r for r in req_list if not r.get('bed_no') and r.get('status') == "WAITING"]
+        if wait:
+            p_sel = st.selectbox("Assign Patient", [r['name'] for r in wait])
+            b_val = st.text_input("Bed ID", key="allot_b")
+            if st.button("Finalize Allotment"):
+                r_id = next(r['ID'] for r in wait if r['name'] == p_sel)
+                db.collection("bed_requests").document(r_id).update({"bed_no": b_val, "status": "DONE"})
+                if b_val in all_bed_ids: db.collection("beds").document(b_val).set({"status": "ALLOTTED", "patient": p_sel})
+                if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
+                st.rerun()
+
+        # 📝 ENTRY MODIFICATION (Remark/Cancel)
+        st.divider(); st.subheader("📝 Entry Modification")
+        if req_list:
+            target = st.selectbox("Select Patient to Edit", [r['name'] for r in req_list], key="sb_mod")
+            action = st.radio("Action", ["Edit Remark", "Mark as CANCELLED", "Delete Entry"], horizontal=True)
+            new_val = st.text_input("New Remark")
+            if st.button("Confirm Modification"):
+                r_id = next(r['ID'] for r in req_list if r['name'] == target)
+                if action == "Delete Entry": db.collection("bed_requests").document(r_id).delete()
+                elif action == "Mark as CANCELLED": db.collection("bed_requests").document(r_id).update({"status": "CANCELLED", "bed_no": ""})
+                else: db.collection("bed_requests").document(r_id).update({"remark": new_val})
+                if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
+                st.rerun()
+
+        # ⚙️ MANUAL BED UPDATE
+        st.divider(); st.subheader("⚙️ Manual Bed Update")
+        m_bed = st.selectbox("Select Bed", all_bed_ids); m_stat = st.selectbox("Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE", "RESTRICTED"]); m_name = st.text_input("Name Override")
+        if st.button("Apply Bed Update"):
+            db.collection("beds").document(m_bed).set({"status": m_stat, "patient": m_name})
+            if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
+            st.rerun()
+
+        # ⚠️ DATA RESET
+        st.divider(); st.error("⚠️ DATA RESET")
+        if st.button("RESET ALL BEDS"):
+            for b in all_bed_ids: db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
+            if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
+            st.rerun()
+        if st.button("CLEAR REQUEST LIST"):
+            for r in db.collection("bed_requests").stream(): r.reference.delete()
+            if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
+            st.rerun()
 
 # --- 8. VISUAL DASHBOARD ---
 if show_dashboard:
