@@ -9,82 +9,71 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- ADVANCED TECHNICAL THEME & 3D UI ---
+# --- ADVANCED TECHNICAL LIGHT THEME (3D NEUMORPHIC) ---
 st.markdown("""
 <style>
-    /* Global Background & Font */
+    /* Base Light Tech Theme */
     .stApp {
-        background: radial-gradient(circle, #1a1c2c 0%, #0d0e14 100%);
-        color: #e0e0e0;
-        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        background-color: #f0f2f6;
+        color: #31333f;
     }
 
-    /* 3D Tactile Buttons */
+    /* 3D Neumorphic Button Master Theme */
     .stButton > button {
-        background: linear-gradient(145deg, #232732, #1b1e26) !important;
-        color: #4CC9F0 !important;
-        border: 1px solid #30363d !important;
-        border-radius: 8px !important;
+        background: #f0f2f6 !important;
+        color: #31333f !important;
+        border: none !important;
         padding: 0.6em 1.2em !important;
-        font-weight: bold !important;
-        text-transform: uppercase !important;
-        letter-spacing: 1px !important;
-        box-shadow: 4px 4px 0px #000, 0px 0px 10px rgba(76, 201, 240, 0.2) !important;
-        transition: all 0.1s ease !important;
-    }
-
-    .stButton > button:active {
-        transform: translate(2px, 2px) !important;
-        box-shadow: 1px 1px 0px #000 !important;
-    }
-
-    .stButton > button:hover {
-        border-color: #4CC9F0 !important;
-        color: #fff !important;
-        box-shadow: 0px 0px 15px rgba(76, 201, 240, 0.4) !important;
-    }
-
-    /* Glassmorphism Containers */
-    div[data-testid="stExpander"], .stForm {
-        background: rgba(255, 255, 255, 0.03) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
         border-radius: 12px !important;
-        backdrop-filter: blur(10px);
+        box-shadow: 7px 7px 15px #cbced1, -7px -7px 15px #ffffff !important;
+        transition: all 0.3s ease-in-out !important;
+        font-weight: 600 !important;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    /* Animation & Click Effect */
+    .stButton > button:active {
+        box-shadow: inset 4px 4px 8px #cbced1, inset -4px -4px 8px #ffffff !important;
+        transform: translateY(2px);
+    }
+
+    /* Glowing Effect on Hover */
+    .stButton > button:hover {
+        color: #007bff !important;
+        box-shadow: 0px 0px 20px rgba(0, 123, 255, 0.4), 7px 7px 15px #cbced1, -7px -7px 15px #ffffff !important;
+    }
+
+    /* Advanced Containers */
+    div[data-testid="stExpander"], .stForm {
+        background: #f0f2f6 !important;
+        border-radius: 20px !important;
+        border: none !important;
+        box-shadow: 9px 9px 16px #cbced1, -9px -9px 16px #ffffff !important;
         padding: 20px !important;
+        margin-bottom: 20px !important;
     }
 
-    /* Technical Metrics */
-    div[data-testid="stMetric"] {
-        background: rgba(0, 0, 0, 0.3);
-        border-left: 3px solid #4CC9F0;
-        padding: 10px;
-        border-radius: 4px;
+    /* Technical Metric Glow */
+    div[data-testid="stMetricValue"] {
+        color: #007bff !important;
+        text-shadow: 0 0 5px rgba(0,123,255,0.2);
     }
 
-    /* High-Tech Headers */
-    h1 {
-        text-shadow: 0px 0px 15px rgba(76, 201, 240, 0.5);
-        letter-spacing: 2px;
-        color: #fff !important;
-    }
-
-    /* Sidebar Customization */
-    [data-testid="stSidebar"] {
-        background-color: #0d0e14 !important;
-        border-right: 1px solid #30363d;
-    }
-
-    /* Grid Bed Cards Enhancement */
+    /* Bed Card Grid Styling */
     .bed-card {
-        border-radius: 8px;
-        padding: 10px;
-        text-align: center;
-        border: 1px solid rgba(255,255,255,0.1);
+        background: #f0f2f6;
+        border-radius: 10px;
+        box-shadow: 4px 4px 8px #cbced1, -4px -4px 8px #ffffff;
         transition: transform 0.2s;
     }
     .bed-card:hover {
-        transform: scale(1.03);
-        box-shadow: 0px 0px 20px rgba(76, 201, 240, 0.2);
+        transform: scale(1.02);
+    }
+
+    /* Table Headers Styling */
+    .stMarkdown b {
+        color: #007bff;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -151,7 +140,7 @@ if st.button("🔄 Refresh Dashboard Data"):
 alerts = [b for b in book_list if b.get('book_date') == today_iso]
 for a in alerts:
     with st.container():
-        st.markdown(f"<div style='background-color: rgba(255, 82, 82, 0.1); border: 2px solid #FF5252; padding: 15px; border-radius: 10px; margin-bottom: 5px; box-shadow: 0px 0px 10px rgba(255, 82, 82, 0.3);'><b>🚨 TODAY'S BOOKING: {a.get('name', 'N/A')}</b></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background-color: #FFEBEE; border: 2px solid #FF5252; padding: 15px; border-radius: 5px; margin-bottom: 5px;'><b>🚨 TODAY'S BOOKING: {a.get('name', 'N/A')}</b></div>", unsafe_allow_html=True)
         if st.button(f"✅ Admit: {a.get('name')}", key=f"ack_{a['ID']}"):
             db.collection("bed_requests").add({
                 "timestamp": datetime.now(tz), "name": a.get('name'), "category": a.get('category', 'OTHER'),
@@ -208,8 +197,8 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             r_cols[0].write(idx + 1); r_cols[1].write(r.get('name', '-')); r_cols[2].write(r.get('category', '-'))
             r_cols[3].write(r.get('dr_name', '-')); r_cols[4].write(r.get('shift_from', '-')); r_cols[5].write(r.get('shift_to', '-'))
             r_cols[6].write(r.get('remark', '-')); r_cols[7].write(b_no if b_no else "-")
-            color_map = {"DONE": "#4CC9F0", "CANCELLED": "#FF5252", "GEN-WARD ALLOTTED": "#4895EF", "HOLD": "#7209B7"}
-            color = color_map.get(current_status, "#F9C74F")
+            color_map = {"DONE": "green", "CANCELLED": "red", "GEN-WARD ALLOTTED": "blue", "HOLD": "purple"}
+            color = color_map.get(current_status, "orange")
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{current_status}</span>", unsafe_allow_html=True)
             if current_status == "DONE":
                 slip = f"""====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r['name']}\n------------------------------------\nBED:  {b_no}\n===================================="""
@@ -370,21 +359,15 @@ with st.sidebar:
 
 # --- 8. VISUAL DASHBOARD ---
 if show_dashboard:
-    status_colors = {"VACANT": "rgba(255,255,255,0.05)", "BOOKED": "rgba(144, 238, 144, 0.4)", "ALLOTTED": "#4CC9F0", "DISCHARGE": "rgba(173, 216, 230, 0.4)", "MAINTENANCE": "rgba(224, 224, 224, 0.2)", "RESTRICTED": "rgba(255, 0, 0, 0.5)"}
+    status_colors = {"VACANT": "#FFFFFF", "BOOKED": "#90EE90", "ALLOTTED": "#000000", "DISCHARGE": "#ADD8E6", "MAINTENANCE": "#E0E0E0", "RESTRICTED": "#FF0000"}
     st.title("🏥 Live Bed Status")
     for wing, beds in bed_structure.items():
         st.subheader(wing); cols = st.columns(5)
         for i, bed in enumerate(beds):
             data = live_data.get(bed, {"status": "VACANT", "patient": ""})
-            bg = status_colors.get(data.get('status', 'VACANT'), "rgba(255,255,255,0.05)")
-            txt = "#000" if data.get('status') == "ALLOTTED" else "#fff"
+            bg = status_colors.get(data.get('status', 'VACANT'), "#FFFFFF")
+            txt = "white" if data.get('status') in ["ALLOTTED", "RESTRICTED"] else "black"
             with cols[i % 5]:
-                st.markdown(f'''
-                    <div class="bed-card" style="background-color:{bg}; color:{txt};">
-                        <b>{bed}</b><br>
-                        <span style="font-size:10px; font-weight:bold; opacity:0.8;">{data.get("status", "VACANT")}</span><br>
-                        <i style="font-size:10px;">{data.get("patient", "")}</i>
-                    </div>
-                ''', unsafe_allow_html=True)
+                st.markdown(f'<div class="bed-card" style="background-color:{bg}; color:{txt}; padding:5px; border:1px solid #ccc; border-radius:10px; text-align:center; height:85px; font-size:11px;"><b>{bed}</b><br><span style="font-size:10px; font-weight:bold;">{data.get("status", "VACANT")}</span><br><i style="font-size:10px;">{data.get("patient", "")}</i></div>', unsafe_allow_html=True)
 else:
     st.info("🔒 Enter Admin Password in sidebar to view Bed Status.")
