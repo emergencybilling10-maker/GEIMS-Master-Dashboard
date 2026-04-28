@@ -9,6 +9,28 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
+# --- PREMIUM LIVE BACKGROUND ---
+st.markdown("""
+    <style>
+    .stApp {
+        background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+        background-size: 400% 400%;
+        animation: gradient 15s ease infinite;
+    }
+    @keyframes gradient {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    /* Optional: Makes the content area slightly readable over the moving background */
+    .stMarkdown, .stButton, .stMetric, .stExpander {
+        background-color: rgba(255, 255, 255, 0.1);
+        padding: 10px;
+        border-radius: 10px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 # --- 1. SECURE DATABASE CONNECTION ---
 @st.cache_resource
 def get_db():
