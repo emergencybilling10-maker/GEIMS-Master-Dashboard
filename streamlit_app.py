@@ -9,114 +9,105 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- DARK MODE & ANIMATED WATER WAVE THEME ---
+# --- DARK MODE & WHITE ANIMATED WAVES ---
 st.markdown("""
 <style>
-    /* Dark Mode Base */
+    /* Dark Mode Deep Base */
     .stApp {
-        background-color: #0b0d11;
+        background-color: #05070a;
         color: #e0e0e0;
-        overflow: hidden;
     }
 
-    /* Animated Water Waves */
-    .stApp::before {
-        content: "";
+    /* White Animated Waves Containers */
+    .wave-container {
         position: fixed;
+        width: 100%;
+        height: 150px;
         bottom: 0;
         left: 0;
-        width: 100%;
-        height: 15vh;
-        background: url('https://raw.githubusercontent.com/front-end-relative/assets/main/wave.png');
-        background-size: 1000px 100px;
-        opacity: 0.15;
-        animation: wave 10s linear infinite;
-        z-index: 0;
+        background: transparent;
+        z-index: -1; /* Keep behind all content */
         pointer-events: none;
     }
 
-    .stApp::after {
-        content: "";
-        position: fixed;
+    .wave {
+        position: absolute;
         bottom: 0;
         left: 0;
-        width: 100%;
-        height: 12vh;
+        width: 200%;
+        height: 100px;
         background: url('https://raw.githubusercontent.com/front-end-relative/assets/main/wave.png');
         background-size: 1000px 100px;
+        /* Force White Waves using Filters */
+        filter: brightness(0) invert(1) opacity(0.2); 
+        animation: move_wave 15s linear infinite;
+    }
+
+    .wave2 {
+        bottom: 10px;
         opacity: 0.1;
-        animation: wave-reverse 7s linear infinite;
-        z-index: 0;
-        pointer-events: none;
+        animation: move_wave 10s linear infinite reverse;
+        filter: brightness(0) invert(1) opacity(0.1);
     }
 
-    @keyframes wave {
-        0% { background-position-x: 0; }
-        100% { background-position-x: 1000px; }
-    }
-    @keyframes wave-reverse {
-        0% { background-position-x: 0; }
-        100% { background-position-x: -1000px; }
+    @keyframes move_wave {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-50%); }
     }
 
     /* 3D Tactile Button Effect (Dark Mode) */
     div.stButton > button {
-        background-color: #1e2128;
-        color: #4da3ff;
-        border: 1px solid #3a3f4b;
+        background-color: #161b22;
+        color: #ffffff;
+        border: 1px solid #30363d;
         padding: 10px 20px;
         border-radius: 12px;
         font-weight: bold;
-        box-shadow: 0 4px #000;
+        box-shadow: 0 4px 0px #000000;
         transition: all 0.1s ease;
     }
 
     div.stButton > button:hover {
-        background-color: #2a2e37;
-        box-shadow: 0 4px #000;
+        border-color: #ffffff;
         transform: translateY(-1px);
-        border-color: #4da3ff;
+        box-shadow: 0 5px 0px #000000;
     }
 
     div.stButton > button:active {
-        box-shadow: 0 0px #000;
+        box-shadow: 0 0px #000000;
         transform: translateY(4px);
-        background-color: #121417;
+        background-color: #0d1117;
     }
 
-    /* Dark Glass Containers */
+    /* Dark Mode Glass Cards */
     [data-testid="stMetric"], .stExpander, .stForm {
-        background: rgba(30, 33, 40, 0.7) !important;
-        backdrop-filter: blur(15px);
-        border-radius: 15px !important;
-        border: 1px solid rgba(255, 255, 255, 0.05) !important;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
-    }
-
-    /* Text & Header Glow */
-    h1 {
-        color: #ffffff;
-        text-shadow: 0 0 15px rgba(77, 163, 255, 0.4);
-    }
-    
-    .stMarkdown, p, span {
-        color: #e0e0e0 !important;
+        background: rgba(22, 27, 34, 0.8) !important;
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(240, 246, 252, 0.1) !important;
+        border-radius: 16px !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
     }
 
     /* Bed status cards */
-    .bed-card-dark {
-        background-color: rgba(42, 46, 55, 0.8);
-        border: 1px solid rgba(255,255,255,0.1);
+    .bed-card {
+        background-color: rgba(48, 54, 61, 0.4);
+        border: 1px solid rgba(240, 246, 252, 0.1);
         border-radius: 12px;
-        padding: 10px;
+        padding: 12px;
         text-align: center;
-        transition: transform 0.3s ease;
+        transition: all 0.3s ease;
     }
-    .bed-card-dark:hover {
-        transform: scale(1.03);
-        border-color: #4da3ff;
+    .bed-card:hover {
+        transform: translateY(-5px) scale(1.02);
+        border-color: #ffffff;
+        background-color: rgba(48, 54, 61, 0.8);
     }
 </style>
+
+<div class="wave-container">
+    <div class="wave"></div>
+    <div class="wave wave2"></div>
+</div>
 """, unsafe_allow_html=True)
 
 # --- 1. SECURE DATABASE CONNECTION ---
