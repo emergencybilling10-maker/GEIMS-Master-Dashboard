@@ -9,89 +9,100 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- HEARTBEAT / ECG THEME INJECTION ---
+# --- MEDICAL MONITOR & PULSE LINE THEME ---
 st.markdown("""
     <style>
-    /* 1. Main Background: Deep Medical Monitor Green/Black */
+    /* 1. CRT Monitor Base */
     .stApp {
-        background-color: #050a05;
+        background-color: #000500;
         background-image: 
-            linear-gradient(rgba(0, 255, 65, 0.1) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 255, 65, 0.1) 1px, transparent 1px);
-        background-size: 30px 30px; /* Grid effect */
-        color: #00ff41;
+            linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+            linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+        background-size: 100% 2px, 3px 100%; /* Scanline effect */
+        color: #33ff33;
+        font-family: 'Courier New', Courier, monospace;
     }
 
-    /* 2. The "Heartbeat" Scanning Line */
+    /* 2. Animated Pulse Line (ECG) at Top */
     .stApp::before {
         content: "";
         position: fixed;
         top: 0;
-        left: -100%;
+        left: 0;
         width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(0, 255, 65, 0.2), transparent);
-        animation: scan 4s linear infinite;
-        z-index: 0;
-        pointer-events: none;
+        height: 4px;
+        background: #33ff33;
+        box-shadow: 0 0 20px #33ff33, 0 0 40px #33ff33;
+        z-index: 9999;
+        animation: heartrate 2.5s linear infinite;
     }
 
-    @keyframes scan {
-        0% { left: -100%; }
-        100% { left: 100%; }
+    @keyframes heartrate {
+        0% { transform: scaleX(0); transform-origin: left; opacity: 0.2; }
+        20% { transform: scaleX(1); transform-origin: left; opacity: 1; }
+        50% { transform: scaleX(1); transform-origin: right; opacity: 1; }
+        100% { transform: scaleX(0); transform-origin: right; opacity: 0; }
     }
 
-    /* 3. Pulsing Headers (The Heartbeat) */
+    /* 3. Glowing Pulse Animation for Headers */
     h1, h2, h3 {
-        color: #00ff41 !important;
-        font-family: 'Courier New', Courier, monospace;
-        text-shadow: 0 0 5px #00ff41;
-        animation: pulse 1.5s ease-in-out infinite;
+        color: #33ff33 !important;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        text-shadow: 0 0 8px rgba(51, 255, 51, 0.6);
+        border-left: 5px solid #33ff33;
+        padding-left: 15px;
     }
 
-    @keyframes pulse {
-        0% { opacity: 1; transform: scale(1); }
-        10% { opacity: 0.8; transform: scale(1.01); }
-        20% { opacity: 1; transform: scale(1); }
-        100% { opacity: 1; transform: scale(1); }
+    /* 4. Monitor Grid Containers */
+    .stExpander, .stForm, [data-testid="stMetric"] {
+        background: rgba(0, 20, 0, 0.9) !important;
+        border: 1px solid #33ff33 !important;
+        box-shadow: inset 0 0 15px rgba(51, 255, 51, 0.1);
+        border-radius: 0px !important; /* Sharp medical look */
     }
 
-    /* 4. Glowing Metric Cards */
-    [data-testid="stMetric"] {
-        background: rgba(0, 40, 0, 0.6);
-        border: 1px solid #00ff41;
-        border-radius: 10px;
-        padding: 15px;
-        box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+    /* 5. Metrics styling */
+    [data-testid="stMetricValue"] {
+        color: #33ff33 !important;
+        font-size: 2rem !important;
     }
 
-    /* 5. Buttons with "Vitals" style */
+    /* 6. Buttons - Ghost Medical Style */
     .stButton>button {
-        background: transparent;
-        border: 2px solid #00ff41;
-        color: #00ff41;
-        border-radius: 20px;
-        font-weight: bold;
-        transition: 0.3s;
+        background: rgba(51, 255, 51, 0.1);
+        border: 1px solid #33ff33;
+        color: #33ff33;
+        border-radius: 0px;
+        text-transform: uppercase;
+        font-size: 0.8rem;
     }
-    
+
     .stButton>button:hover {
-        background: #00ff41;
+        background: #33ff33;
         color: #000;
-        box-shadow: 0 0 20px #00ff41;
+        box-shadow: 0 0 15px #33ff33;
     }
 
-    /* 6. Form/Expander Transparency */
-    .stExpander, .stForm {
-        background: rgba(0, 20, 0, 0.8) !important;
-        border: 1px solid #00ff41 !important;
-    }
-
-    /* Sidebar Tweaks */
+    /* 7. Sidebar Terminal Style */
     [data-testid="stSidebar"] {
-        background-color: #020502;
-        border-right: 2px solid #00ff41;
+        background-color: #000a00;
+        border-right: 1px solid #33ff33;
     }
+
+    /* 8. Table / Dataframe Styling */
+    .stDataFrame, [data-testid="stTable"] {
+        border: 1px solid #33ff33;
+    }
+
+    /* Flicker effect for realism */
+    @keyframes flicker {
+        0% { opacity: 0.98; }
+        5% { opacity: 0.95; }
+        10% { opacity: 0.99; }
+        100% { opacity: 1; }
+    }
+    .stApp { animation: flicker 0.1s infinite; }
     </style>
     """, unsafe_allow_html=True)
 
