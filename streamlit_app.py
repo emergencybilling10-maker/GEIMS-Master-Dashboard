@@ -280,22 +280,66 @@ with c_col5:
     else:
         st.error("TPA PDF Missing")
 
-# --- 7. SIDEBAR ---
+# --- 7. SIDEBAR: FUTURE BOOKING & ADMIN ---
 show_dashboard = False 
 with st.sidebar:
     st.header("📅 Future Booking Control")
+    
+    # --- ADDING NEW BOOKINGS ---
     with st.expander("📝 ADD FUTURE BOOKING"):
         with st.form("future_form", clear_on_submit=True):
-            f_name = st.text_input("Patient Name"); f_uhid = st.text_input("UHID No."); f_dr = st.text_input("Doctor Name")
-            f_date = st.date_input("Booking Date"); f_room = st.text_input("Pre-decided Bed ID"); f_cat = st.selectbox("Category", ["SELF PAY", "OTHER"]); f_pref = st.selectbox("Bed Preference", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
+            f_name = st.text_input("Patient Name")
+            f_uhid = st.text_input("UHID No.")
+            f_dr = st.text_input("Doctor Name")
+            f_date = st.date_input("Booking Date")
+            f_room = st.text_input("Pre-decided Bed ID")
+            f_cat = st.selectbox("Category", ["SELF PAY", "OTHER"])
+            f_pref = st.selectbox("Bed Preference", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
+            
             if st.form_submit_button("Save"):
-                db.collection("future_bookings").add({"name": f_name, "uhid": f_uhid, "dr": f_dr, "book_date": f_date.strftime('%Y-%m-%d'), "category": f_cat, "preference": f_pref, "pref_bed": f_room})
-                if 'cached_book_list' in st.session_state: del st.session_state['cached_book_list']
-                st.rerun()
+                if f_name and f_uhid:
+                    db.collection("future_bookings").add({
+                        "name": f_name, 
+                        "uhid": f_uhid, 
+                        "dr": f_dr, 
+                        "book_date": f_date.strftime('%Y-%m-%d'), 
+                        "category": f_cat, 
+                        "preference": f_pref, 
+                        "pref_bed": f_room,
+                        "timestamp": datetime.now(tz)
+                    })
+                    if 'cached_book_list' in st.session_state: del st.session_state['cached_book_list']
+                    st.toast(f"Booking Saved for {f_name}", icon="📅")
+                    st.rerun()
+                else:
+                    st.error("Name and UHID required!")
 
-    st.divider(); st.header("🛡️ Admin Panel")
+    # --- VIEWING SAVED BOOKINGS ---
+    st.markdown("### 📋 Scheduled Bookings")
+    future_data = db.collection("future_bookings").order_by("book_date").get()
+    
+    if future_data:
+        for doc in future_data:
+            b = doc.to_dict()
+            with st.expander(f"👤 {b['name']} ({b['book_date']})"):
+                st.write(f"**UHID:** {b['uhid']}")
+                st.write(f"**Doctor:** {b['dr']}")
+                st.write(f"**Pref:** {b['preference']} | **Bed:** {b['pref_bed']}")
+                # Option to clear booking
+                if st.button(f"Cancel {b['uhid']}", key=f"del_{doc.id}"):
+                    db.collection("future_bookings").document(doc.id).delete()
+                    if 'cached_book_list' in st.session_state: del st.session_state['cached_book_list']
+                    st.rerun()
+    else:
+        st.info("No future bookings scheduled.")
+
+    st.divider()
+    
+    # --- ADMIN PANEL ---
+    st.header("🛡️ Admin Panel")
     if st.text_input("Admin Password", type="password") == "GeimsAdmin99":
-        show_dashboard = True 
+        show_dashboard = True
+        st.success("Admin Access Granted")
         
         # 📋 REPORTS
         st.subheader("📋 Reports")
