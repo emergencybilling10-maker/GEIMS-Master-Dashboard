@@ -9,6 +9,102 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
+# --- DARK WATER WAVE & 3D THEME INJECTION ---
+st.markdown("""
+<style>
+    /* 1. Deep Dark Background */
+    .stApp {
+        background-color: #000b1a;
+        color: #e0e0e0;
+        overflow: hidden;
+    }
+
+    /* 2. Water Wave Animation */
+    .stApp::before, .stApp::after {
+        content: "";
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 200%;
+        height: 300px;
+        background: rgba(0, 150, 255, 0.15);
+        border-radius: 40%;
+        z-index: -1;
+        transform: translateX(-25%);
+    }
+
+    .stApp::before {
+        animation: wave 12s infinite linear;
+        background: rgba(0, 100, 255, 0.1);
+    }
+
+    .stApp::after {
+        animation: wave 18s infinite linear;
+        opacity: 0.5;
+        bottom: -20px;
+    }
+
+    @keyframes wave {
+        from { transform: translateX(0) rotate(0deg); }
+        to { transform: translateX(-50%) rotate(360deg); }
+    }
+
+    /* 3. 3D Tactile Button Effect */
+    div.stButton > button {
+        background: linear-gradient(145deg, #002d5a, #001a33);
+        color: #00d2ff;
+        border: 1px solid #0059b3;
+        padding: 10px 25px;
+        border-radius: 10px;
+        font-weight: bold;
+        box-shadow: 0 5px 0 #000a1a; /* Thickness */
+        transition: all 0.1s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    div.stButton > button:hover {
+        background: #003d7a;
+        color: #fff;
+        box-shadow: 0 5px 0 #000a1a;
+        transform: translateY(-2px);
+    }
+
+    /* The 3D Push-Down Effect */
+    div.stButton > button:active {
+        box-shadow: 0 0px #000a1a;
+        transform: translateY(5px);
+    }
+
+    /* 4. Glassmorphism Containers */
+    [data-testid="stMetric"], .stExpander, .stForm {
+        background: rgba(255, 255, 255, 0.03) !important;
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 15px !important;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8) !important;
+    }
+
+    /* Headers */
+    h1, h2, h3 {
+        color: #00d2ff !important;
+        text-shadow: 0 0 10px rgba(0, 210, 255, 0.3);
+    }
+
+    /* Bed status box hover */
+    .bed-card {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        transition: transform 0.3s ease;
+    }
+    .bed-card:hover {
+        transform: scale(1.05) translateZ(20px);
+        background: rgba(255,255,255,0.1);
+        border-color: #00d2ff;
+    }
+</style>
+""", unsafe_allow_html=True
+
 # --- 1. SECURE DATABASE CONNECTION ---
 @st.cache_resource
 def get_db():
