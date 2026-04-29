@@ -9,98 +9,91 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- DARK MODE + 3D TACTILE + WHITE WAVE THEME ---
+# --- DARK MODE + 3D TACTILE + FORCED WHITE WAVES ---
 st.markdown("""
 <style>
-    /* 1. Deep Dark Background */
-    .stApp {
+    /* 1. Force the Main Background to be Dark */
+    [data-testid="stAppViewContainer"] {
         background-color: #0d1117 !important;
-        color: #e6edf3;
     }
 
-    /* 2. White Animated Waves (Global Overlay) */
-    /* We create a fixed container at the bottom */
-    .wave-wrapper {
+    /* 2. Advanced White Wave Animation */
+    /* We inject this into the main background container */
+    [data-testid="stAppViewContainer"]::before {
+        content: "";
         position: fixed;
-        width: 100%;
-        height: 15%;
         bottom: 0;
         left: 0;
-        z-index: -1; /* Placed behind everything */
-        overflow: hidden;
+        width: 100%;
+        height: 120px;
+        background: url('https://raw.githubusercontent.com/front-end-relative/assets/main/wave.png');
+        background-size: 1000px 100px;
+        /* Force White Waves: Invert turns blue to white/orange, Brightness/Opacity cleans it */
+        filter: brightness(0) invert(1) opacity(0.2); 
+        animation: move_wave 12s linear infinite;
+        z-index: 0; /* Keeps it above background but behind content */
         pointer-events: none;
     }
 
-    .wave {
-        position: absolute;
-        bottom: 0;
+    /* Secondary Wave for depth */
+    [data-testid="stAppViewContainer"]::after {
+        content: "";
+        position: fixed;
+        bottom: 5px;
         left: 0;
-        width: 200%;
-        height: 100%;
+        width: 100%;
+        height: 100px;
         background: url('https://raw.githubusercontent.com/front-end-relative/assets/main/wave.png');
         background-size: 1000px 100px;
-        /* Turn the blue wave asset into semi-transparent white */
-        filter: brightness(0) invert(1) opacity(0.15);
-        animation: move_wave 12s linear infinite;
-    }
-
-    .wave-back {
-        bottom: 10px;
-        filter: brightness(0) invert(1) opacity(0.08);
+        filter: brightness(0) invert(1) opacity(0.1);
         animation: move_wave 8s linear infinite reverse;
+        z-index: 0;
+        pointer-events: none;
     }
 
     @keyframes move_wave {
-        0% { transform: translateX(0); }
-        100% { transform: translateX(-50%); }
+        0% { background-position-x: 0; }
+        100% { background-position-x: 1000px; }
     }
 
-    /* 3. 3D Tactile Buttons (The Push Effect) */
+    /* 3. 3D Tactile Buttons (Click Effect) */
     div.stButton > button {
         background-color: #21262d !important;
-        color: #58a6ff !important;
+        color: #ffffff !important;
         border: 1px solid #30363d !important;
-        border-radius: 8px !important;
-        padding: 0.5rem 1rem !important;
-        font-weight: 600 !important;
-        /* The 'Depth' shadow */
+        border-radius: 10px !important;
         box-shadow: 0 4px 0 #000000 !important;
         transition: all 0.1s ease !important;
     }
 
     div.stButton > button:hover {
-        border-color: #8b949e !important;
+        border-color: #58a6ff !important;
         transform: translateY(-1px);
         box-shadow: 0 5px 0 #000000 !important;
     }
 
-    /* The "3D Click" effect */
     div.stButton > button:active {
         transform: translateY(4px) !important;
         box-shadow: 0 0 0 #000000 !important;
         background-color: #161b22 !important;
     }
 
-    /* 4. Glassmorphism for Containers */
+    /* 4. Glassmorphism for Dashboard Cards */
     [data-testid="stMetric"], .stForm, .stExpander {
-        background: rgba(22, 27, 34, 0.7) !important;
-        backdrop-filter: blur(10px);
-        border: 1px solid #30363d !important;
-        border-radius: 12px !important;
+        background: rgba(22, 27, 34, 0.85) !important;
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(240, 246, 252, 0.1) !important;
+        border-radius: 15px !important;
         box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
+        z-index: 1; /* Ensures cards stay above the waves */
     }
 
-    /* Custom Metric Value Glow */
+    /* Table & Metric Value Glow */
     [data-testid="stMetricValue"] {
         color: #58a6ff !important;
-        text-shadow: 0 0 10px rgba(88, 166, 255, 0.3);
+        text-shadow: 0 0 10px rgba(88, 166, 255, 0.4);
     }
 </style>
-
-<div class="wave-wrapper">
-    <div class="wave"></div>
-    <div class="wave wave-back"></div>
-</div>
 """, unsafe_allow_html=True)
 
 # --- 1. SECURE DATABASE CONNECTION ---
