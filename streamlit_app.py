@@ -9,90 +9,93 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- SHARP FOREST HD + 3D TACTILE INTERFACE ---
+# --- FRACTAL CYBER-CORE + 3D TACTILE INTERFACE ---
 st.markdown("""
 <style>
-    /* 1. THE MOVING BACKGROUND: SHARP & CLEAR */
+    /* 1. THE MOVING FRACTAL BACKGROUND: SHARP & HD */
     [data-testid="stAppViewContainer"] {
-        background-image: url("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdDd5b3UzbDg4czZvcDR3b2JqNHpybmpvMmxwcTN5OHhoNTcwbHpvbSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/vnd963U745GWn3xVfX/giphy.gif") !important;
+        background-image: url("https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExMDdmeDMyMThlMWswNGR0dnYxdXZvandrZXdpbTZzdTZrazE3Y2V1MyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3ohhwg3O1TGRXHQYh2/giphy.gif") !important;
         background-size: cover !important;
         background-position: center !important;
         background-attachment: fixed !important;
     }
 
-    /* 2. THE VISIBILITY OVERLAY: Clear but Darkened (No Blur) */
+    /* 2. THE VISIBILITY OVERLAY: Deep Space Tint (Keeps GIF Sharp) */
     [data-testid="stAppViewContainer"]::before {
         content: "";
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
-        /* Dark tint only - removed backdrop-filter blur to keep GIF sharp */
-        background: rgba(0, 5, 0, 0.6); 
+        /* Dark blue-black tint to contrast the trippy fractal */
+        background: rgba(2, 5, 10, 0.75); 
         z-index: 0;
         pointer-events: none;
     }
 
-    /* 3. PREMIUM 3D TACTILE BUTTONS */
+    /* 3. PREMIUM 3D TACTILE BUTTONS (PUMP-ACTION) */
     div.stButton > button {
-        background: rgba(255, 255, 255, 0.1) !important;
-        color: #ffffff !important;
-        border: 1px solid rgba(144, 238, 144, 0.3) !important;
-        border-radius: 10px !important;
-        padding: 0.6rem 1.4rem !important;
-        font-weight: 700 !important;
+        background: rgba(255, 255, 255, 0.05) !important;
+        color: #00e5ff !important; /* Electric Cyan */
+        border: 1px solid rgba(0, 229, 255, 0.3) !important;
+        border-radius: 6px !important;
+        padding: 0.7rem 1.6rem !important;
+        font-weight: 800 !important;
         text-transform: uppercase;
-        /* Professional 3D Shadow */
-        box-shadow: 0 5px 0px #081a08, 0 8px 15px rgba(0,0,0,0.5) !important;
-        transition: all 0.1s ease !important;
+        letter-spacing: 2px;
+        /* The 3D Heavy Shadow */
+        box-shadow: 0 6px 0px #005a70, 0 10px 20px rgba(0,0,0,0.6) !important;
+        transition: all 0.05s ease-in-out !important;
         backdrop-filter: blur(10px);
     }
 
     div.stButton > button:hover {
-        background: rgba(255, 255, 255, 0.15) !important;
+        background: rgba(0, 229, 255, 0.1) !important;
         transform: translateY(-2px);
-        box-shadow: 0 7px 0px #081a08, 0 12px 20px rgba(0,0,0,0.6) !important;
+        box-shadow: 0 8px 0px #005a70, 0 15px 25px rgba(0,0,0,0.7) !important;
     }
 
-    /* The "3D Click" Effect */
+    /* The "3D Gravity" Click - Full Shadow Collapse */
     div.stButton > button:active {
-        transform: translateY(5px) !important;
+        transform: translateY(6px) !important;
         box-shadow: 0 0px 0px transparent !important;
-        background: rgba(144, 238, 144, 0.3) !important;
+        background: #00e5ff !important;
+        color: #000000 !important;
     }
 
-    /* 4. FROSTED GLASS PANELS (Keeps cards clear but distinct) */
+    /* 4. TECH-GLASS PANELS (High Transparency) */
     [data-testid="stMetric"], .stForm, .stExpander {
-        background: rgba(10, 20, 10, 0.7) !important;
-        backdrop-filter: blur(15px) saturate(140%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-radius: 15px !important;
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8) !important;
-        z-index: 1;
-        margin-bottom: 20px !important;
+        background: rgba(0, 10, 20, 0.8) !important;
+        backdrop-filter: blur(20px) saturate(180%) !important;
+        border: 1px solid rgba(0, 229, 255, 0.2) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 15px 45px rgba(0, 0, 0, 0.9) !important;
+        margin-bottom: 25px !important;
     }
 
-    /* 5. TYPOGRAPHY SHARPNESS */
+    /* 5. TYPOGRAPHY: Electric Glow */
     h1 {
-        font-weight: 800 !important;
-        color: #ffffff !important;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
+        font-family: 'Courier New', Courier, monospace;
+        color: #00e5ff !important;
+        text-shadow: 0 0 15px rgba(0, 229, 255, 0.6);
         text-align: center;
+        letter-spacing: 5px;
     }
 
     [data-testid="stMetricValue"] {
-        color: #90ee90 !important;
-        text-shadow: 0 0 10px rgba(144, 238, 144, 0.4);
+        color: #ffffff !important;
+        text-shadow: 0 0 20px #00e5ff;
         font-weight: 800 !important;
     }
 
-    /* Sidebar Fix */
+    /* Sidebar Interface */
     [data-testid="stSidebar"] {
-        background-color: rgba(5, 10, 5, 0.96) !important;
-        border-right: 1px solid rgba(144, 238, 144, 0.1);
+        background-color: rgba(0, 5, 10, 0.98) !important;
+        border-right: 2px solid #00e5ff;
     }
 
-    /* Scrollbar */
+    /* Custom Electric Scrollbar */
     ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-thumb { background: rgba(144, 238, 144, 0.4); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb { background: #00e5ff; border-radius: 10px; }
+    ::-webkit-scrollbar-track { background: #000; }
 </style>
 """, unsafe_allow_html=True)
 
