@@ -280,71 +280,22 @@ with c_col5:
     else:
         st.error("TPA PDF Missing")
 
-import requests
-from bs4 import BeautifulSoup
-
-def sync_hms_portal():
-    # 1. SETUP SESSION & CREDENTIALS
-    login_url = "https://hms.geimshospital.com/Default.aspx"
-    status_url = "https://hms.geimshospital.com/ATD/BedStatus.aspx?MPG=P214&Mpg=P214&irtrf=96665B8A-715C-42A3-AF98-F254880791B5"
-    
-    # Target Credentials
-    username = "C7103193"
-    password = "0123"
-
-    with requests.Session() as s:
-        try:
-            # 2. FETCH LOGIN TOKENS
-            res = s.get(login_url, verify=False) # verify=False if SSL is internal/expired
-            soup = BeautifulSoup(res.text, 'html.parser')
-            
-            # Extract ASP.NET hidden fields
-            viewstate = soup.find('input', attrs={'name': '__VIEWSTATE'})['value']
-            validation = soup.find('input', attrs={'name': '__EVENTVALIDATION'})['value']
-            
-            # 3. ATTEMPT LOGIN
-            login_payload = {
-                '__VIEWSTATE': viewstate,
-                '__EVENTVALIDATION': validation,
-                'txtUserName': username,  # Adjust IDs if 'Inspect Element' shows different
-                'txtPassword': password,
-                'btnLogin': 'Login'
-            }
-            
-            s.post(login_url, data=login_payload)
-            
-            # 4. FETCH BED STATUS PAGE
-            response = s.get(status_url)
-            status_soup = BeautifulSoup(response.text, 'html.parser')
-            
-            # 5. PARSE & SYNC (Logic depends on the portal's HTML structure)
-            # This looks for 'divs' or 'spans' that usually represent beds
-            beds = status_soup.find_all('div', style=True) 
-            
-            for bed in beds:
-                bed_text = bed.get_text().strip()
-                bg_color = bed.get('style', '')
-                
-                # Detect Status based on Color (Common in HMS portals)
-                # Red/Pink (#FF...) usually means Occupied, Green/White Vacant
-                status = "ALLOTTED" if "pink" in bg_color.lower() or "red" in bg_color.lower() else "VACANT"
-                
-                # Match bed ID and update Firestore
-                if bed_text in all_bed_ids:
-                    db.collection("beds").document(bed_text).update({"status": status})
-            
-            st.toast("🧬 HMS Portal Sync Complete!", icon="📡")
-            st.rerun()
-
-        except Exception as e:
-            st.error(f"Sync Interrupt: {e}")
-
-# --- ADD SYNC BUTTON TO YOUR SIDEBAR ---
+# --- 7. SIDEBAR ---
+show_dashboard = False 
 with st.sidebar:
-    st.divider()
-    if st.button("🚀 SYNC LIVE WITH HIS PORTAL"):
-        with st.spinner("Connecting to GEIMS Neural Network..."):
-            sync_hms_portal()
+    st.header("📅 Future Booking Control")
+    with st.expander("📝 ADD FUTURE BOOKING"):
+        with st.form("future_form", clear_on_submit=True):
+            f_name = st.text_input("Patient Name"); f_uhid = st.text_input("UHID No."); f_dr = st.text_input("Doctor Name")
+            f_date = st.date_input("Booking Date"); f_room = st.text_input("Pre-decided Bed ID"); f_cat = st.selectbox("Category", ["SELF PAY", "OTHER"]); f_pref = st.selectbox("Bed Preference", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
+            if st.form_submit_button("Save"):
+                db.collection("future_bookings").add({"name": f_name, "uhid": f_uhid, "dr": f_dr, "book_date": f_date.strftime('%Y-%m-%d'), "category": f_cat, "preference": f_pref, "pref_bed": f_room})
+                if 'cached_book_list' in st.session_state: del st.session_state['cached_book_list']
+                st.rerun()
+
+    st.divider(); st.header("🛡️ Admin Panel")
+    if st.text_input("Admin Password", type="password") == "GeimsAdmin99":
+        show_dashboard = True 
         
         # 📋 REPORTS
         st.subheader("📋 Reports")
