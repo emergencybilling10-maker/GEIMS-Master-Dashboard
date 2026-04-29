@@ -9,102 +9,26 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- MEDICAL MONITOR & PULSE LINE THEME ---
+# --- HEARTBEAT / ECG THEME INJECTION ---
 st.markdown("""
     <style>
-    /* 1. CRT Monitor Base */
+    /* 1. Main Background: Deep Medical Monitor Green/Black */
     .stApp {
-        background-color: #000500;
+        background-color: #050a05;
         background-image: 
-            linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
-            linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-        background-size: 100% 2px, 3px 100%; /* Scanline effect */
-        color: #33ff33;
-        font-family: 'Courier New', Courier, monospace;
+            linear-gradient(rgba(0, 255, 65, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 255, 65, 0.1) 1px, transparent 1px);
+        background-size: 30px 30px; /* Grid effect */
+        color: #00ff41;
     }
 
-    /* 2. Animated Pulse Line (ECG) at Top */
+    /* 2. The "Heartbeat" Scanning Line */
     .stApp::before {
         content: "";
         position: fixed;
         top: 0;
-        left: 0;
+        left: -100%;
         width: 100%;
-        height: 4px;
-        background: #33ff33;
-        box-shadow: 0 0 20px #33ff33, 0 0 40px #33ff33;
-        z-index: 9999;
-        animation: heartrate 2.5s linear infinite;
-    }
-
-    @keyframes heartrate {
-        0% { transform: scaleX(0); transform-origin: left; opacity: 0.2; }
-        20% { transform: scaleX(1); transform-origin: left; opacity: 1; }
-        50% { transform: scaleX(1); transform-origin: right; opacity: 1; }
-        100% { transform: scaleX(0); transform-origin: right; opacity: 0; }
-    }
-
-    /* 3. Glowing Pulse Animation for Headers */
-    h1, h2, h3 {
-        color: #33ff33 !important;
-        text-transform: uppercase;
-        letter-spacing: 3px;
-        text-shadow: 0 0 8px rgba(51, 255, 51, 0.6);
-        border-left: 5px solid #33ff33;
-        padding-left: 15px;
-    }
-
-    /* 4. Monitor Grid Containers */
-    .stExpander, .stForm, [data-testid="stMetric"] {
-        background: rgba(0, 20, 0, 0.9) !important;
-        border: 1px solid #33ff33 !important;
-        box-shadow: inset 0 0 15px rgba(51, 255, 51, 0.1);
-        border-radius: 0px !important; /* Sharp medical look */
-    }
-
-    /* 5. Metrics styling */
-    [data-testid="stMetricValue"] {
-        color: #33ff33 !important;
-        font-size: 2rem !important;
-    }
-
-    /* 6. Buttons - Ghost Medical Style */
-    .stButton>button {
-        background: rgba(51, 255, 51, 0.1);
-        border: 1px solid #33ff33;
-        color: #33ff33;
-        border-radius: 0px;
-        text-transform: uppercase;
-        font-size: 0.8rem;
-    }
-
-    .stButton>button:hover {
-        background: #33ff33;
-        color: #000;
-        box-shadow: 0 0 15px #33ff33;
-    }
-
-    /* 7. Sidebar Terminal Style */
-    [data-testid="stSidebar"] {
-        background-color: #000a00;
-        border-right: 1px solid #33ff33;
-    }
-
-    /* 8. Table / Dataframe Styling */
-    .stDataFrame, [data-testid="stTable"] {
-        border: 1px solid #33ff33;
-    }
-
-    /* Flicker effect for realism */
-    @keyframes flicker {
-        0% { opacity: 0.98; }
-        5% { opacity: 0.95; }
-        10% { opacity: 0.99; }
-        100% { opacity: 1; }
-    }
-    .stApp { animation: flicker 0.1s infinite; }
-    </style>
-    """, unsafe_allow_html=True)
 
 # --- 1. SECURE DATABASE CONNECTION ---
 @st.cache_resource
