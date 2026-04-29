@@ -9,104 +9,89 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- CINEMATIC SATIN & BLINKING GLASS THEME ---
-st.markdown("""
+# --- ANIMATED GREEN FOREST THEME ---
+st.markdown(f"""
 <style>
-    /* 1. Video-Style Animated Liquid Background */
-    [data-testid="stAppViewContainer"] {
-        background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
-        background-size: 400% 400% !important;
-        animation: gradientVideo 15s ease infinite !important;
-        transition: all 0.5s ease;
-    }
+    /* 1. Global Background: Forest GIF */
+    [data-testid="stAppViewContainer"] {{
+        background-image: url("https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeDBhMm1waHlneTZyYWJtbDYzNnFyb3l0cjMzYmFjcTl4YzRyZjQyMiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/UxTZDNv0Zej4s/giphy.gif");
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        color: #ffffff;
+    }}
 
-    /* Neutralizing overlay to suit both light and dark modes */
-    [data-testid="stAppViewContainer"]::before {
+    /* Overlay to ensure text readability against the GIF */
+    [data-testid="stAppViewContainer"]::before {{
         content: "";
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: brightness(0.7) contrast(1.2); /* Adjusts video depth */
+        background: rgba(0, 0, 0, 0.3); /* Darkens the forest slightly */
         z-index: 0;
         pointer-events: none;
-    }
+    }}
 
-    @keyframes gradientVideo {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-    }
-
-    /* 2. 3D Tactile "Blinking" Buttons */
-    div.stButton > button {
-        background: rgba(255, 255, 255, 0.2) !important;
+    /* 2. 3D "Moss & Wood" Tactile Buttons */
+    div.stButton > button {{
+        background: rgba(34, 74, 34, 0.8) !important; /* Deep Forest Green */
         color: white !important;
-        border: 1px solid rgba(255, 255, 255, 0.4) !important;
-        border-radius: 8px !important;
-        font-weight: 600 !important;
-        box-shadow: 0 4px 0px rgba(0, 0, 0, 0.3) !important;
-        transition: all 0.2s ease !important;
-        backdrop-filter: blur(5px);
-    }
-
-    div.stButton > button:hover {
-        background: rgba(255, 255, 255, 0.3) !important;
-        animation: blink 1s infinite alternate; /* The Blinking Effect */
-        transform: translateY(-2px);
-    }
-
-    /* The "Press" Animation */
-    div.stButton > button:active {
-        transform: translateY(4px) !important;
-        box-shadow: 0 0px 0px transparent !important;
-    }
-
-    @keyframes blink {
-        from { box-shadow: 0 0 5px rgba(255,255,255,0.2); }
-        to { box-shadow: 0 0 20px rgba(255,255,255,0.6); }
-    }
-
-    /* 3. Shimmering Video Panels (Metrics & Forms) */
-    [data-testid="stMetric"], .stForm, .stExpander {
-        background: rgba(255, 255, 255, 0.15) !important;
-        backdrop-filter: blur(25px) saturate(150%) !important;
         border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        border-radius: 16px !important;
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2) !important;
-        position: relative;
-        overflow: hidden;
-    }
+        border-radius: 8px !important;
+        padding: 0.6rem 1.2rem !important;
+        font-weight: 700 !important;
+        /* Thick 3D Shadow */
+        box-shadow: 0 5px 0px #142d14 !important;
+        transition: all 0.1s ease !important;
+        backdrop-filter: blur(5px);
+    }}
 
-    /* Blinking "Live" indicator inside panels */
-    [data-testid="stMetric"]::after {
-        content: "";
-        position: absolute;
-        top: 10px; right: 10px;
-        width: 8px; height: 8px;
-        background: #00ff00;
-        border-radius: 50%;
-        animation: liveBlink 1.5s infinite;
-    }
+    div.stButton > button:hover {{
+        background: rgba(45, 100, 45, 0.9) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 7px 0px #142d14 !important;
+    }}
 
-    @keyframes liveBlink {
-        0% { opacity: 1; transform: scale(1); }
-        100% { opacity: 0; transform: scale(2.5); }
-    }
+    /* The "Mechanical Log" Press Effect */
+    div.stButton > button:active {{
+        transform: translateY(5px) !important;
+        box-shadow: 0 0px 0px transparent !important;
+    }}
 
-    /* 4. Adaptive Text (Suits Light/Dark) */
-    h1, h2, h3, p, label {
-        color: white !important;
-        text-shadow: 1px 1px 10px rgba(0,0,0,0.3);
-    }
+    /* 3. Forest Glass Panels (Metrics & Forms) */
+    [data-testid="stMetric"], .stForm, .stExpander {{
+        background: rgba(255, 255, 255, 0.1) !important;
+        backdrop-filter: blur(12px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 15px !important;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3) !important;
+        z-index: 1;
+    }}
 
-    [data-testid="stMetricValue"] {
+    /* 4. Glowing Typography */
+    h1 {{
+        font-family: 'Georgia', serif;
+        font-weight: 900 !important;
         color: #ffffff !important;
-        font-weight: 800 !important;
-    }
+        text-shadow: 2px 2px 15px rgba(0, 50, 0, 1);
+        text-align: center;
+    }}
 
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 10px; }
+    [data-testid="stMetricValue"] {{
+        color: #b9ffb9 !important; /* Soft Lime Green */
+        text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        font-weight: 800 !important;
+    }}
+
+    /* Sidebar Styling */
+    [data-testid="stSidebar"] {{
+        background-color: rgba(0, 20, 0, 0.8) !important;
+        backdrop-filter: blur(10px);
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }}
+
+    /* Custom Green Scrollbar */
+    ::-webkit-scrollbar {{ width: 8px; }}
+    ::-webkit-scrollbar-thumb {{ background: rgba(0, 255, 0, 0.2); border-radius: 10px; }}
 </style>
 """, unsafe_allow_html=True)
 
