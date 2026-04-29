@@ -9,10 +9,10 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- FULL FOREST GIF THEME + 3D TACTILE INTERFACE ---
+# --- LUXE FOREST GLASS + 3D TACTILE INTERFACE ---
 st.markdown("""
 <style>
-    /* 1. GLOBAL BACKGROUND: THE MOVING FOREST GIF */
+    /* 1. THE MOVING BACKGROUND: MISTY FOREST */
     [data-testid="stAppViewContainer"] {
         background-image: url("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdDd5b3UzbDg4czZvcDR3b2JqNHpybmpvMmxwcTN5OHhoNTcwbHpvbSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/vnd963U745GWn3xVfX/giphy.gif") !important;
         background-size: cover !important;
@@ -20,73 +20,85 @@ st.markdown("""
         background-attachment: fixed !important;
     }
 
-    /* 2. OVERLAY TO DARKEN GIF FOR READABILITY */
+    /* 2. THE BEST VISIBILITY OVERLAY: Deep Frosted Glass */
     [data-testid="stAppViewContainer"]::before {
         content: "";
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0, 0, 0, 0.4); /* Darkens the forest slightly */
+        /* Dark tint + slight blur to make background 'slightly visible' */
+        background: rgba(8, 12, 8, 0.65); 
+        backdrop-filter: blur(2px); 
         z-index: 0;
         pointer-events: none;
     }
 
-    /* 3. 3D PUSH BUTTONS (TACTILE FEEDBACK) */
+    /* 3. PREMIUM 3D TACTILE BUTTONS */
     div.stButton > button {
-        background: rgba(255, 255, 255, 0.1) !important;
+        background: rgba(255, 255, 255, 0.07) !important;
         color: #ffffff !important;
-        border: 1px solid rgba(255, 255, 255, 0.3) !important;
-        border-radius: 12px !important;
-        padding: 0.6rem 1.5rem !important;
-        font-weight: 700 !important;
-        /* The 3D Shadow */
-        box-shadow: 0 5px 0px #0b2410, 0 8px 15px rgba(0,0,0,0.5) !important;
-        transition: all 0.1s ease !important;
-        backdrop-filter: blur(5px);
+        border: 1px solid rgba(144, 238, 144, 0.2) !important;
+        border-radius: 10px !important;
+        padding: 0.6rem 1.4rem !important;
+        font-weight: 600 !important;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        /* Professional 3D Shadow: Dark Forest Green */
+        box-shadow: 0 5px 0px #051408, 0 8px 15px rgba(0,0,0,0.5) !important;
+        transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        backdrop-filter: blur(10px);
     }
 
     div.stButton > button:hover {
+        background: rgba(255, 255, 255, 0.12) !important;
+        border-color: rgba(144, 238, 144, 0.5) !important;
         transform: translateY(-2px);
-        box-shadow: 0 7px 0px #0b2410, 0 12px 20px rgba(0,0,0,0.6) !important;
+        box-shadow: 0 7px 0px #051408, 0 12px 20px rgba(0,0,0,0.6) !important;
     }
 
-    /* The "3D Press" Effect */
+    /* The "3D Click" - Deep Pressure Sensation */
     div.stButton > button:active {
         transform: translateY(5px) !important;
         box-shadow: 0 0px 0px transparent !important;
-        background: rgba(144, 238, 144, 0.3) !important;
+        background: rgba(144, 238, 144, 0.2) !important;
     }
 
-    /* 4. FROSTED GLASS PANELS (CARDS & FORMS) */
+    /* 4. HIGH-DEPTH DATA PANELS (GLASSMORPHISM) */
     [data-testid="stMetric"], .stForm, .stExpander {
-        background: rgba(0, 20, 0, 0.6) !important;
-        backdrop-filter: blur(15px) saturate(140%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.15) !important;
-        border-radius: 20px !important;
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7) !important;
+        background: rgba(255, 255, 255, 0.03) !important;
+        backdrop-filter: blur(20px) saturate(160%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 15px !important;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7) !important;
         z-index: 1;
+        margin-bottom: 20px !important;
     }
 
-    /* 5. TYPOGRAPHY & GLOW */
-    h1, h2, h3 {
+    /* 5. TYPOGRAPHY: Soft Glow & Sharpness */
+    h1 {
+        font-weight: 800 !important;
         color: #ffffff !important;
-        text-shadow: 2px 2px 10px rgba(0,0,0,0.8);
-        font-family: 'Inter', sans-serif;
+        text-shadow: 0 4px 10px rgba(0,0,0,0.5), 0 0 20px rgba(144, 238, 144, 0.2);
+        letter-spacing: -1px;
     }
 
     [data-testid="stMetricValue"] {
-        color: #90ee90 !important;
-        text-shadow: 0 0 15px rgba(144, 238, 144, 0.5);
+        color: #90ee90 !important; /* Soft Emerald */
+        text-shadow: 0 0 15px rgba(144, 238, 144, 0.3);
+        font-weight: 800 !important;
     }
 
-    /* Sidebar Glass UI */
+    [data-testid="stMetricLabel"] {
+        color: rgba(255, 255, 255, 0.7) !important;
+        text-transform: uppercase;
+        font-size: 0.8rem !important;
+        letter-spacing: 1px;
+    }
+
+    /* Sidebar Interface */
     [data-testid="stSidebar"] {
-        background-color: rgba(5, 10, 5, 0.9) !important;
-        border-right: 1px solid rgba(255, 255, 255, 0.1);
+        background-color: rgba(5, 8, 5, 0.95) !important;
+        border-right: 1px solid rgba(144, 238, 144, 0.1);
     }
-
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-thumb { background: rgba(144, 238, 144, 0.3); border-radius: 10px; }
 </style>
 """, unsafe_allow_html=True)
 
