@@ -6,110 +6,8 @@ import json
 from datetime import datetime
 import pytz
 
-# --- FORCING DESKTOP WIDE LAYOUT ---
-st.set_page_config(layout="wide", page_title="GEIMS Dashboard")
-
-# --- FRACTAL CRYSTAL + ULTRA-GLASS 3D INTERFACE ---
-st.markdown("""
-<style>
-    /* DESKTOP OPTIMIZATION: REMOVE MARGINS */
-    .block-container {
-        padding-top: 2rem !important;
-        padding-bottom: 0rem !important;
-        padding-left: 3rem !important;
-        padding-right: 3rem !important;
-        max-width: 95% !important;
-    }
-
-    /* 1. HIGH-BRIGHTNESS FRACTAL BACKGROUND */
-    [data-testid="stAppViewContainer"] {
-        background-image: url("https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExMDdmeDMyMThlMWswNGR0dnYxdXZvandrZXdpbTZzdTZrazE3Y2V1MyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3ohhwg3O1TGRXHQYh2/giphy.gif") !important;
-        background-size: cover !important;
-        background-position: center !important;
-        background-attachment: fixed !important;
-    }
-
-    /* 2. LIGHTER OVERLAY (Better Brightness) */
-    [data-testid="stAppViewContainer"]::before {
-        content: "";
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0, 5, 15, 0.45); 
-        z-index: 0;
-        pointer-events: none;
-    }
-
-    /* 3. CRYSTAL GLASS PANELS (FIXED WIDTHS FOR DESKTOP) */
-    [data-testid="stMetric"], .stForm, .stExpander {
-        background: rgba(255, 255, 255, 0.05) !important;
-        backdrop-filter: blur(25px) saturate(200%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        border-radius: 20px !important;
-        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5) !important;
-        margin-bottom: 25px !important;
-        color: white !important;
-    }
-
-    /* 4. PREMIUM 3D TACTILE GLASS BUTTONS */
-    div.stButton > button {
-        background: rgba(255, 255, 255, 0.1) !important;
-        color: #ffffff !important;
-        border: 1px solid rgba(255, 255, 255, 0.4) !important;
-        border-radius: 12px !important;
-        padding: 0.7rem 1.8rem !important;
-        font-weight: 700 !important;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        box-shadow: 0 6px 0px rgba(255, 255, 255, 0.2), 0 10px 20px rgba(0,0,0,0.4) !important;
-        transition: all 0.1s ease !important;
-        backdrop-filter: blur(10px);
-    }
-
-    div.stButton > button:hover {
-        background: rgba(255, 255, 255, 0.2) !important;
-        transform: translateY(-2px);
-        box-shadow: 0 8px 0px rgba(255, 255, 255, 0.3), 0 15px 25px rgba(0,0,0,0.5) !important;
-    }
-
-    div.stButton > button:active {
-        transform: translateY(6px) !important;
-        box-shadow: 0 0px 0px transparent !important;
-        background: rgba(255, 255, 255, 0.3) !important;
-    }
-
-    /* 5. VIBRANT TYPOGRAPHY */
-    h1 {
-        font-weight: 900 !important;
-        color: #ffffff !important;
-        text-shadow: 0 5px 15px rgba(0,0,0,0.5);
-        text-align: center;
-        letter-spacing: 2px;
-    }
-
-    [data-testid="stMetricValue"] {
-        color: #ffffff !important;
-        text-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
-        font-weight: 800 !important;
-    }
-    
-    [data-testid="stMetricLabel"] {
-        color: rgba(255, 255, 255, 0.8) !important;
-        font-weight: 600 !important;
-    }
-
-    /* Sidebar Glass UI */
-    [data-testid="stSidebar"] {
-        background-color: rgba(0, 0, 0, 0.7) !important;
-        backdrop-filter: blur(15px);
-        border-right: 1px solid rgba(255, 255, 255, 0.1);
-        min-width: 350px !important; /* Forces sidebar to be readable on wide screens */
-    }
-
-    /* Professional Scrollbar */
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
-</style>
-""", unsafe_allow_html=True)
+# Page Config
+st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
 # --- 1. SECURE DATABASE CONNECTION ---
 @st.cache_resource
@@ -190,9 +88,8 @@ for a in alerts:
 with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
     pending = sum(1 for r in req_list if r.get('status') == "WAITING" and not r.get('bed_no'))
     allotted = sum(1 for r in req_list if r.get('status') == "DONE")
-    c_met1, c_met2 = st.columns(2)
-    c_met1.metric("Pending", pending)
-    c_met2.metric("Done", allotted)
+    st.columns(2)[0].metric("Pending", pending)
+    st.columns(2)[1].metric("Done", allotted)
     st.divider()
 
     with st.form("new_req", clear_on_submit=True):
@@ -217,8 +114,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
     if req_list:
         st.divider()
         sq = st.text_input("🔍 Search Patient Name", "").lower()
-        # Increased widths for better desktop visibility
-        h_cols = st.columns([0.5, 2, 1.2, 1.5, 1.2, 1.2, 2.5, 1, 1, 1])
+        h_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1, 1.5])
         headers = ["S.N", "NAME", "CAT", "DR", "FROM", "TO", "REMARK", "BED", "STATUS", "ACTION"]
         for col, h in zip(h_cols, headers): col.write(f"**{h}**")
         for idx, r in enumerate(req_list):
@@ -228,7 +124,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             b_no = r.get('bed_no', '')
             if b_no and current_status == "WAITING": current_status = "DONE"
             
-            r_cols = st.columns([0.5, 2, 1.2, 1.5, 1.2, 1.2, 2.5, 1, 1, 1])
+            r_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1, 1.5])
             r_cols[0].write(idx + 1); r_cols[1].write(r.get('name', '-')); r_cols[2].write(r.get('category', '-'))
             r_cols[3].write(r.get('dr_name', '-')); r_cols[4].write(r.get('shift_from', '-')); r_cols[5].write(r.get('shift_to', '-'))
             r_cols[6].write(r.get('remark', '-')); r_cols[7].write(b_no if b_no else "-")
@@ -237,7 +133,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{current_status}</span>", unsafe_allow_html=True)
             if current_status == "DONE":
                 slip = f"""====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r['name']}\n------------------------------------\nBED:  {b_no}\n===================================="""
-                r_cols[9].download_button("Slip", data=slip, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
+                r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
 
 # --- NEW: PDF CONSENT FORM PANEL ---
 st.subheader("📝 ADMISSION & SHIFTING CONSENT FORMS (PDF)")
@@ -255,32 +151,42 @@ c_col1, c_col2, c_col3, c_col4, c_col5 = st.columns(5)
 # 1. SELF PAY
 pdf_self = get_pdf_data("consent_self_pay.pdf")
 with c_col1:
-    if pdf_self: st.download_button("💳 SELF PAY", pdf_self, file_name="Consent_SelfPay.pdf", mime="application/pdf")
-    else: st.error("Self Pay PDF Missing")
+    if pdf_self:
+        st.download_button("💳 1 - SELF PAY", pdf_self, file_name="Consent_SelfPay.pdf", mime="application/pdf")
+    else:
+        st.error("Self Pay PDF Missing")
 
 # 2. CGHS CASH
 pdf_cghs_cash = get_pdf_data("consent_cghs_cash.pdf")
 with c_col2:
-    if pdf_cghs_cash: st.download_button("💰 CGHS CASH", pdf_cghs_cash, file_name="Consent_CGHS_Cash.pdf", mime="application/pdf")
-    else: st.error("CGHS Cash PDF Missing")
+    if pdf_cghs_cash:
+        st.download_button("💰 2 - CGHS CASH", pdf_cghs_cash, file_name="Consent_CGHS_Cash.pdf", mime="application/pdf")
+    else:
+        st.error("CGHS Cash PDF Missing")
 
 # 3. ECHS
 pdf_echs = get_pdf_data("consent_echs.pdf")
 with c_col3:
-    if pdf_echs: st.download_button("🎖️ ECHS", pdf_echs, file_name="Consent_ECHS.pdf", mime="application/pdf")
-    else: st.error("ECHS PDF Missing")
+    if pdf_echs:
+        st.download_button("🎖️ 3 - ECHS", pdf_echs, file_name="Consent_ECHS.pdf", mime="application/pdf")
+    else:
+        st.error("ECHS PDF Missing")
 
 # 4. CGHS CREDIT & PSU
 pdf_cghs_credit = get_pdf_data("consent_cghs_credit.pdf")
 with c_col4:
-    if pdf_cghs_credit: st.download_button("🏥 CGHS CREDIT/PSU", pdf_cghs_credit, file_name="Consent_CGHS_Credit.pdf", mime="application/pdf")
-    else: st.error("Credit PDF Missing")
+    if pdf_cghs_credit:
+        st.download_button("🏥 4 - CGHS CREDIT/PSU", pdf_cghs_credit, file_name="Consent_CGHS_Credit.pdf", mime="application/pdf")
+    else:
+        st.error("Credit PDF Missing")
 
 # 5. TPA
 pdf_tpa = get_pdf_data("consent_tpa.pdf")
 with c_col5:
-    if pdf_tpa: st.download_button("🏢 TPA", pdf_tpa, file_name="Consent_TPA.pdf", mime="application/pdf")
-    else: st.error("TPA PDF Missing")
+    if pdf_tpa:
+        st.download_button("🏢 5 - TPA", pdf_tpa, file_name="Consent_TPA.pdf", mime="application/pdf")
+    else:
+        st.error("TPA PDF Missing")
 
 # --- 7. SIDEBAR ---
 show_dashboard = False 
@@ -387,18 +293,12 @@ if show_dashboard:
     status_colors = {"VACANT": "#FFFFFF", "BOOKED": "#90EE90", "ALLOTTED": "#000000", "DISCHARGE": "#ADD8E6", "MAINTENANCE": "#E0E0E0", "RESTRICTED": "#FF0000"}
     st.title("🏥 Live Bed Status")
     for wing, beds in bed_structure.items():
-        st.subheader(wing)
-        # Force 5 columns consistently for desktop
-        cols = st.columns(5)
+        st.subheader(wing); cols = st.columns(5)
         for i, bed in enumerate(beds):
             data = live_data.get(bed, {"status": "VACANT", "patient": ""})
             bg = status_colors.get(data.get('status', 'VACANT'), "#FFFFFF")
             txt = "white" if data.get('status') in ["ALLOTTED", "RESTRICTED"] else "black"
             with cols[i % 5]:
-                st.markdown(f'''<div style="background-color:{bg}; color:{txt}; padding:5px; border:1px solid rgba(255,255,255,0.2); border-radius:10px; text-align:center; height:100px; font-size:12px; box-shadow: 2px 2px 5px rgba(0,0,0,0.3);">
-                <b style="font-size: 14px;">{bed}</b><br>
-                <span style="font-weight:bold;">{data.get("status", "VACANT")}</span><br>
-                <i style="font-size:11px; display: block; margin-top: 5px;">{data.get("patient", "")}</i>
-                </div>''', unsafe_allow_html=True)
+                st.markdown(f'<div style="background-color:{bg}; color:{txt}; padding:5px; border:1px solid #ccc; border-radius:5px; text-align:center; height:85px; font-size:11px;"><b>{bed}</b><br><span style="font-size:10px; font-weight:bold;">{data.get("status", "VACANT")}</span><br><i style="font-size:10px;">{data.get("patient", "")}</i></div>', unsafe_allow_html=True)
 else:
     st.info("🔒 Enter Admin Password in sidebar to view Bed Status.")
