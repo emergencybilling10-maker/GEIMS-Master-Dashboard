@@ -9,105 +9,90 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- CYBER-INDUSTRIAL DIGITAL RAIN THEME ---
+# --- PRISM GLASS & LIQUID FLOW ANIMATED THEME ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
 
-    /* 1. The Digital Rain Background */
+    /* 1. Dynamic Liquid Mesh Background */
     [data-testid="stAppViewContainer"] {
-        background-color: #000500 !important;
-        background-image: linear-gradient(0deg, rgba(0, 30, 0, 0.5) 50%, rgba(0, 0, 0, 0.5) 50%),
-                          linear-gradient(90deg, rgba(0, 30, 0, 0.5) 50%, rgba(0, 0, 0, 0.5) 50%);
-        background-size: 4px 4px; /* Tiny grid pattern */
-        color: #00ff41 !important;
-        font-family: 'JetBrains Mono', monospace;
+        background: linear-gradient(125deg, #0a0c10 0%, #1a1c2c 25%, #0f2a3a 50%, #1a1c2c 75%, #0a0c10 100%) !important;
+        background-size: 400% 400% !important;
+        animation: meshFlow 15s ease infinite !important;
+        font-family: 'Inter', sans-serif;
+        color: #ffffff;
     }
 
-    /* Animated Vertical Code Rain */
-    [data-testid="stAppViewContainer"]::before {
-        content: "1010110101010100101011010101010010101101010101001010110101010100";
-        position: fixed;
-        top: -100%;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        font-size: 20px;
-        line-height: 20px;
-        color: rgba(0, 255, 65, 0.05);
-        white-space: pre-wrap;
-        word-break: break-all;
-        animation: rain 20s linear infinite;
-        z-index: 0;
-        pointer-events: none;
+    @keyframes meshFlow {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
     }
 
-    @keyframes rain {
-        0% { transform: translateY(0); }
-        100% { transform: translateY(100%); }
-    }
-
-    /* 2. 3D Industrial "Toggle" Buttons */
+    /* 2. Soft-Touch 3D Buttons (Mechanical Depth) */
     div.stButton > button {
-        background: #1a1a1a !important;
-        color: #00ff41 !important;
-        border: 2px solid #333 !important;
-        border-radius: 4px !important;
-        text-transform: uppercase;
-        font-weight: 700 !important;
-        /* Heavy mechanical shadow */
-        box-shadow: 0 6px 0 #000, 0 0 10px rgba(0, 255, 65, 0.1) !important;
-        transition: all 0.05s ease !important;
+        background: rgba(255, 255, 255, 0.08) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        border-radius: 12px !important;
+        padding: 0.6rem 1.5rem !important;
+        font-weight: 600 !important;
+        /* Professional 3D Shadow Stack */
+        box-shadow: 0 4px 0px rgba(0, 0, 0, 0.4), 0 8px 15px rgba(0, 0, 0, 0.3) !important;
+        transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
 
     div.stButton > button:hover {
-        border-color: #00ff41 !important;
-        box-shadow: 0 6px 0 #000, 0 0 20px rgba(0, 255, 65, 0.3) !important;
+        background: rgba(255, 255, 255, 0.12) !important;
+        border-color: rgba(255, 255, 255, 0.4) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 0px rgba(0, 0, 0, 0.4), 0 12px 20px rgba(0, 0, 0, 0.4) !important;
     }
 
-    /* The "Power-On" Click Effect */
+    /* The "Soft-Click" 3D Animation */
     div.stButton > button:active {
-        transform: translateY(6px) !important;
-        box-shadow: 0 0 0 transparent !important;
-        background: #00ff41 !important;
-        color: #000 !important;
+        transform: translateY(4px) !important;
+        box-shadow: 0 0px 0px transparent !important;
+        background: rgba(255, 255, 255, 0.2) !important;
     }
 
-    /* 3. Steel-Frame Panels (Metrics & Forms) */
+    /* 3. Frosted Prism Panels (Metrics & Forms) */
     [data-testid="stMetric"], .stForm, .stExpander {
-        background: rgba(10, 15, 10, 0.9) !important;
-        border: 1px solid #333 !important;
-        border-top: 3px solid #00ff41 !important;
-        border-radius: 2px !important;
-        box-shadow: 5px 5px 15px rgba(0,0,0,0.9) !important;
+        background: rgba(255, 255, 255, 0.04) !important;
+        backdrop-filter: blur(20px) saturate(120%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 20px !important;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5) !important;
+        margin-bottom: 20px !important;
     }
 
-    /* 4. Terminal Glow for Titles */
+    /* 4. Elegant Clean Typography */
     h1 {
-        color: #00ff41 !important;
-        text-shadow: 0 0 8px rgba(0, 255, 65, 0.6);
-        border-bottom: 2px solid #00ff41;
-        display: inline-block;
-        padding-bottom: 10px;
+        font-weight: 800 !important;
+        letter-spacing: -1px;
+        background: linear-gradient(to right, #ffffff, #a5b4fc);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 1.5rem !important;
     }
 
-    /* Custom Metric Value Terminal Font */
+    /* Metric Styling */
     [data-testid="stMetricValue"] {
-        color: #00ff41 !important;
-        font-family: 'JetBrains Mono', monospace;
-        text-shadow: 0 0 12px #00ff41;
+        color: #ffffff !important;
+        font-weight: 700 !important;
     }
 
-    /* Sidebar Terminal Style */
+    /* Sidebar Glassmorphism */
     [data-testid="stSidebar"] {
-        background-color: #050505 !important;
-        border-right: 1px solid #00ff41;
+        background-color: rgba(5, 7, 10, 0.9) !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.05);
     }
 
-    /* Custom Green Scrollbar */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-thumb { background: #00ff41; }
-    ::-webkit-scrollbar-track { background: #000; }
+    /* Elegant Custom Scrollbar */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
 </style>
 """, unsafe_allow_html=True)
 
