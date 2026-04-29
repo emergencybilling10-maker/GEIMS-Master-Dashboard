@@ -9,10 +9,10 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- SHARP FOREST HD + 3D TACTILE INTERFACE ---
+# --- LUMINOUS FOREST HD + ULTRA-GLASS 3D INTERFACE ---
 st.markdown("""
 <style>
-    /* 1. THE MOVING BACKGROUND: SHARP & CLEAR */
+    /* 1. THE MOVING BACKGROUND: SHARP & VIVID */
     [data-testid="stAppViewContainer"] {
         background-image: url("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdDd5b3UzbDg4czZvcDR3b2JqNHpybmpvMmxwcTN5OHhoNTcwbHpvbSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/vnd963U745GWn3xVfX/giphy.gif") !important;
         background-size: cover !important;
@@ -20,79 +20,92 @@ st.markdown("""
         background-attachment: fixed !important;
     }
 
-    /* 2. THE VISIBILITY OVERLAY: Clear but Darkened (No Blur) */
+    /* 2. ENHANCED BRIGHTNESS OVERLAY */
     [data-testid="stAppViewContainer"]::before {
         content: "";
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
-        /* Dark tint only - removed backdrop-filter blur to keep GIF sharp */
-        background: rgba(0, 5, 0, 0.6); 
+        /* Reduced opacity to 0.3 to make the forest significantly brighter */
+        background: rgba(0, 5, 0, 0.3); 
         z-index: 0;
         pointer-events: none;
     }
 
-    /* 3. PREMIUM 3D TACTILE BUTTONS */
+    /* 3. PREMIUM 3D TACTILE GLASS BUTTONS */
     div.stButton > button {
-        background: rgba(255, 255, 255, 0.1) !important;
+        background: rgba(255, 255, 255, 0.15) !important;
         color: #ffffff !important;
-        border: 1px solid rgba(144, 238, 144, 0.3) !important;
-        border-radius: 10px !important;
-        padding: 0.6rem 1.4rem !important;
+        border: 1px solid rgba(255, 255, 255, 0.4) !important;
+        border-radius: 12px !important;
+        padding: 0.7rem 1.6rem !important;
         font-weight: 700 !important;
         text-transform: uppercase;
-        /* Professional 3D Shadow */
-        box-shadow: 0 5px 0px #081a08, 0 8px 15px rgba(0,0,0,0.5) !important;
-        transition: all 0.1s ease !important;
-        backdrop-filter: blur(10px);
+        letter-spacing: 1px;
+        /* Professional 3D Shadow with depth */
+        box-shadow: 0 5px 0px #051405, 0 8px 15px rgba(0,0,0,0.4) !important;
+        transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        backdrop-filter: blur(12px);
     }
 
     div.stButton > button:hover {
-        background: rgba(255, 255, 255, 0.15) !important;
+        background: rgba(255, 255, 255, 0.25) !important;
         transform: translateY(-2px);
-        box-shadow: 0 7px 0px #081a08, 0 12px 20px rgba(0,0,0,0.6) !important;
+        box-shadow: 0 7px 0px #051405, 0 12px 20px rgba(0,0,0,0.5) !important;
     }
 
-    /* The "3D Click" Effect */
+    /* 3D "Mechanical Click" */
     div.stButton > button:active {
         transform: translateY(5px) !important;
         box-shadow: 0 0px 0px transparent !important;
-        background: rgba(144, 238, 144, 0.3) !important;
+        background: rgba(144, 238, 144, 0.4) !important;
     }
 
-    /* 4. FROSTED GLASS PANELS (Keeps cards clear but distinct) */
+    /* 4. ULTRA-TRANSPARENT CRYSTAL PANELS (Glassmorphism) */
     [data-testid="stMetric"], .stForm, .stExpander {
-        background: rgba(10, 20, 10, 0.7) !important;
-        backdrop-filter: blur(15px) saturate(140%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-radius: 15px !important;
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8) !important;
+        /* Very low alpha (0.1) for maximum transparency */
+        background: rgba(255, 255, 255, 0.1) !important; 
+        /* High blur and saturation to make it feel like real glass */
+        backdrop-filter: blur(30px) saturate(180%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        border-radius: 20px !important;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4) !important;
         z-index: 1;
-        margin-bottom: 20px !important;
+        margin-bottom: 25px !important;
     }
 
-    /* 5. TYPOGRAPHY SHARPNESS */
+    /* 5. TYPOGRAPHY: SHARP & READABLE */
     h1 {
-        font-weight: 800 !important;
+        font-weight: 900 !important;
         color: #ffffff !important;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
+        text-shadow: 0 4px 12px rgba(0,0,0,0.6);
         text-align: center;
+        letter-spacing: 1px;
     }
 
     [data-testid="stMetricValue"] {
-        color: #90ee90 !important;
-        text-shadow: 0 0 10px rgba(144, 238, 144, 0.4);
+        color: #ffffff !important;
+        text-shadow: 0 0 15px rgba(144, 238, 144, 0.6);
         font-weight: 800 !important;
     }
-
-    /* Sidebar Fix */
-    [data-testid="stSidebar"] {
-        background-color: rgba(5, 10, 5, 0.96) !important;
-        border-right: 1px solid rgba(144, 238, 144, 0.1);
+    
+    [data-testid="stMetricLabel"] {
+        color: rgba(255, 255, 255, 0.9) !important;
+        font-weight: 600 !important;
+        text-transform: uppercase;
+        font-size: 0.85rem !important;
     }
 
-    /* Scrollbar */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-thumb { background: rgba(144, 238, 144, 0.4); border-radius: 10px; }
+    /* Sidebar Glass UI (Matching the main dashboard) */
+    [data-testid="stSidebar"] {
+        background-color: rgba(0, 10, 0, 0.7) !important;
+        backdrop-filter: blur(20px);
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Professional Scrollbar */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
 </style>
 """, unsafe_allow_html=True)
 
