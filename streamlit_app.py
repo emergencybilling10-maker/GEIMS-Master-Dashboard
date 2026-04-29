@@ -9,92 +9,105 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- STARK INDUSTRIES: ARC HUD THEME ---
+# --- CYBER-INDUSTRIAL DIGITAL RAIN THEME ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
 
-    /* 1. Stark HUD Background */
+    /* 1. The Digital Rain Background */
     [data-testid="stAppViewContainer"] {
-        background: radial-gradient(circle at center, #0a192f 0%, #02060c 100%) !important;
-        color: #00d4ff !important;
-        font-family: 'Orbitron', sans-serif;
+        background-color: #000500 !important;
+        background-image: linear-gradient(0deg, rgba(0, 30, 0, 0.5) 50%, rgba(0, 0, 0, 0.5) 50%),
+                          linear-gradient(90deg, rgba(0, 30, 0, 0.5) 50%, rgba(0, 0, 0, 0.5) 50%);
+        background-size: 4px 4px; /* Tiny grid pattern */
+        color: #00ff41 !important;
+        font-family: 'JetBrains Mono', monospace;
     }
 
-    /* 2. Animated HUD Scanning Background */
+    /* Animated Vertical Code Rain */
     [data-testid="stAppViewContainer"]::before {
-        content: "";
+        content: "1010110101010100101011010101010010101101010101001010110101010100";
         position: fixed;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        background-image: 
-            linear-gradient(rgba(0, 212, 255, 0.05) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 212, 255, 0.05) 1px, transparent 1px);
-        background-size: 50px 50px;
+        top: -100%;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        font-size: 20px;
+        line-height: 20px;
+        color: rgba(0, 255, 65, 0.05);
+        white-space: pre-wrap;
+        word-break: break-all;
+        animation: rain 20s linear infinite;
         z-index: 0;
         pointer-events: none;
     }
 
-    /* 3. 3D "Arc Reactor" Push Buttons */
+    @keyframes rain {
+        0% { transform: translateY(0); }
+        100% { transform: translateY(100%); }
+    }
+
+    /* 2. 3D Industrial "Toggle" Buttons */
     div.stButton > button {
-        background: rgba(0, 212, 255, 0.1) !important;
-        color: #00d4ff !important;
-        border: 1px solid #00d4ff !important;
+        background: #1a1a1a !important;
+        color: #00ff41 !important;
+        border: 2px solid #333 !important;
         border-radius: 4px !important;
         text-transform: uppercase;
-        letter-spacing: 2px;
         font-weight: 700 !important;
-        /* Mechanical depth shadow */
-        box-shadow: 0 4px 0 #005a70, 0 0 15px rgba(0, 212, 255, 0.2) !important;
-        transition: all 0.1s ease !important;
+        /* Heavy mechanical shadow */
+        box-shadow: 0 6px 0 #000, 0 0 10px rgba(0, 255, 65, 0.1) !important;
+        transition: all 0.05s ease !important;
     }
 
     div.stButton > button:hover {
-        background: rgba(0, 212, 255, 0.2) !important;
-        box-shadow: 0 5px 0 #005a70, 0 0 25px rgba(0, 212, 255, 0.4) !important;
-        transform: translateY(-1px);
+        border-color: #00ff41 !important;
+        box-shadow: 0 6px 0 #000, 0 0 20px rgba(0, 255, 65, 0.3) !important;
     }
 
-    /* The Mechanical "Press" Effect */
+    /* The "Power-On" Click Effect */
     div.stButton > button:active {
-        transform: translateY(4px) !important;
-        box-shadow: 0 0 0 #005a70, inset 0 0 10px rgba(0, 212, 255, 0.5) !important;
+        transform: translateY(6px) !important;
+        box-shadow: 0 0 0 transparent !important;
+        background: #00ff41 !important;
+        color: #000 !important;
     }
 
-    /* 4. Stark Glass Panels (Metrics & Forms) */
+    /* 3. Steel-Frame Panels (Metrics & Forms) */
     [data-testid="stMetric"], .stForm, .stExpander {
-        background: rgba(0, 20, 40, 0.7) !important;
-        backdrop-filter: blur(10px);
-        border: 1px solid #00d4ff !important;
-        border-left: 5px solid #ff0000 !important; /* Hot Rod Red Accent */
-        border-radius: 0px !important;
-        box-shadow: 0 0 20px rgba(0, 212, 255, 0.1) !important;
-        margin-bottom: 20px !important;
+        background: rgba(10, 15, 10, 0.9) !important;
+        border: 1px solid #333 !important;
+        border-top: 3px solid #00ff41 !important;
+        border-radius: 2px !important;
+        box-shadow: 5px 5px 15px rgba(0,0,0,0.9) !important;
     }
 
-    /* 5. Animated HUD Grid Glow */
-    h1, h2, h3 {
-        color: #00d4ff !important;
-        text-shadow: 0 0 10px #00d4ff;
-        text-transform: uppercase;
+    /* 4. Terminal Glow for Titles */
+    h1 {
+        color: #00ff41 !important;
+        text-shadow: 0 0 8px rgba(0, 255, 65, 0.6);
+        border-bottom: 2px solid #00ff41;
+        display: inline-block;
+        padding-bottom: 10px;
     }
 
-    /* Data Points Metric Glow */
+    /* Custom Metric Value Terminal Font */
     [data-testid="stMetricValue"] {
-        color: #00d4ff !important;
-        text-shadow: 0 0 15px rgba(0, 212, 255, 0.8);
+        color: #00ff41 !important;
+        font-family: 'JetBrains Mono', monospace;
+        text-shadow: 0 0 12px #00ff41;
     }
 
-    /* Sidebar HUD Styling */
+    /* Sidebar Terminal Style */
     [data-testid="stSidebar"] {
-        background-color: #02060c !important;
-        border-right: 2px solid #ff0000 !important;
+        background-color: #050505 !important;
+        border-right: 1px solid #00ff41;
     }
 
-    /* Custom Scrollbar for Stark Tech */
-    ::-webkit-scrollbar { width: 5px; }
-    ::-webkit-scrollbar-track { background: #02060c; }
-    ::-webkit-scrollbar-thumb { background: #ff0000; }
+    /* Custom Green Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #00ff41; }
+    ::-webkit-scrollbar-track { background: #000; }
 </style>
 """, unsafe_allow_html=True)
 
