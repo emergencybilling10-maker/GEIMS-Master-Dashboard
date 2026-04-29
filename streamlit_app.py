@@ -9,83 +9,88 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- FUTURISTIC THEME INJECTION ---
+# --- HEARTBEAT / ECG THEME INJECTION ---
 st.markdown("""
     <style>
-    /* Main App Background */
+    /* 1. Main Background: Deep Medical Monitor Green/Black */
     .stApp {
-        background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-        background-size: 400% 400%;
-        animation: gradient 15s ease infinite;
-        color: #00d4ff;
-    }
-    
-    @keyframes gradient {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
+        background-color: #050a05;
+        background-image: 
+            linear-gradient(rgba(0, 255, 65, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 255, 65, 0.1) 1px, transparent 1px);
+        background-size: 30px 30px; /* Grid effect */
+        color: #00ff41;
     }
 
-    /* Titles and Headers */
+    /* 2. The "Heartbeat" Scanning Line */
+    .stApp::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(0, 255, 65, 0.2), transparent);
+        animation: scan 4s linear infinite;
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    @keyframes scan {
+        0% { left: -100%; }
+        100% { left: 100%; }
+    }
+
+    /* 3. Pulsing Headers (The Heartbeat) */
     h1, h2, h3 {
-        color: #00d4ff !important;
-        text-shadow: 0 0 10px #00d4ff, 0 0 20px #00d4ff;
+        color: #00ff41 !important;
         font-family: 'Courier New', Courier, monospace;
-        letter-spacing: 2px;
+        text-shadow: 0 0 5px #00ff41;
+        animation: pulse 1.5s ease-in-out infinite;
     }
 
-    /* Futuristic Metric Cards */
-    [data-testid="stMetricValue"] {
-        color: #00ffcc !important;
-        font-family: 'Orbitron', sans-serif;
-        text-shadow: 0 0 5px #00ffcc;
+    @keyframes pulse {
+        0% { opacity: 1; transform: scale(1); }
+        10% { opacity: 0.8; transform: scale(1.01); }
+        20% { opacity: 1; transform: scale(1); }
+        100% { opacity: 1; transform: scale(1); }
     }
 
-    /* Buttons */
+    /* 4. Glowing Metric Cards */
+    [data-testid="stMetric"] {
+        background: rgba(0, 40, 0, 0.6);
+        border: 1px solid #00ff41;
+        border-radius: 10px;
+        padding: 15px;
+        box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+    }
+
+    /* 5. Buttons with "Vitals" style */
     .stButton>button {
-        background: rgba(0, 212, 255, 0.1);
-        border: 1px solid #00d4ff;
-        color: #00d4ff;
-        border-radius: 5px;
-        transition: all 0.3s ease;
-        text-transform: uppercase;
+        background: transparent;
+        border: 2px solid #00ff41;
+        color: #00ff41;
+        border-radius: 20px;
         font-weight: bold;
+        transition: 0.3s;
     }
     
     .stButton>button:hover {
-        background: #00d4ff;
+        background: #00ff41;
         color: #000;
-        box-shadow: 0 0 20px #00d4ff;
-        transform: scale(1.02);
+        box-shadow: 0 0 20px #00ff41;
     }
 
-    /* Forms and Expanders */
+    /* 6. Form/Expander Transparency */
     .stExpander, .stForm {
-        background: rgba(255, 255, 255, 0.05) !important;
-        border: 1px solid rgba(0, 212, 255, 0.2) !important;
-        border-radius: 10px !important;
-        backdrop-filter: blur(10px);
+        background: rgba(0, 20, 0, 0.8) !important;
+        border: 1px solid #00ff41 !important;
     }
 
-    /* Sidebar Styling */
+    /* Sidebar Tweaks */
     [data-testid="stSidebar"] {
-        background-color: rgba(15, 12, 41, 0.9);
-        border-right: 1px solid #00d4ff;
-    }
-
-    /* Bed status cards animation */
-    .bed-card {
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-    .bed-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
-    }
-
-    /* Horizontal lines */
-    hr {
-        border-top: 1px solid #00d4ff;
-        opacity: 0.3;
+        background-color: #020502;
+        border-right: 2px solid #00ff41;
     }
     </style>
     """, unsafe_allow_html=True)
