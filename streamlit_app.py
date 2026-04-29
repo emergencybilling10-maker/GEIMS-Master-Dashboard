@@ -9,90 +9,92 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- DARK MODE + 3D TACTILE + FORCED WHITE WAVES ---
+# --- STARK INDUSTRIES: ARC HUD THEME ---
 st.markdown("""
 <style>
-    /* 1. Force the Main Background to be Dark */
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
+    /* 1. Stark HUD Background */
     [data-testid="stAppViewContainer"] {
-        background-color: #0d1117 !important;
+        background: radial-gradient(circle at center, #0a192f 0%, #02060c 100%) !important;
+        color: #00d4ff !important;
+        font-family: 'Orbitron', sans-serif;
     }
 
-    /* 2. Advanced White Wave Animation */
-    /* We inject this into the main background container */
+    /* 2. Animated HUD Scanning Background */
     [data-testid="stAppViewContainer"]::before {
         content: "";
         position: fixed;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        height: 120px;
-        background: url('https://raw.githubusercontent.com/front-end-relative/assets/main/wave.png');
-        background-size: 1000px 100px;
-        /* Force White Waves: Invert turns blue to white/orange, Brightness/Opacity cleans it */
-        filter: brightness(0) invert(1) opacity(0.2); 
-        animation: move_wave 12s linear infinite;
-        z-index: 0; /* Keeps it above background but behind content */
-        pointer-events: none;
-    }
-
-    /* Secondary Wave for depth */
-    [data-testid="stAppViewContainer"]::after {
-        content: "";
-        position: fixed;
-        bottom: 5px;
-        left: 0;
-        width: 100%;
-        height: 100px;
-        background: url('https://raw.githubusercontent.com/front-end-relative/assets/main/wave.png');
-        background-size: 1000px 100px;
-        filter: brightness(0) invert(1) opacity(0.1);
-        animation: move_wave 8s linear infinite reverse;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background-image: 
+            linear-gradient(rgba(0, 212, 255, 0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 212, 255, 0.05) 1px, transparent 1px);
+        background-size: 50px 50px;
         z-index: 0;
         pointer-events: none;
     }
 
-    @keyframes move_wave {
-        0% { background-position-x: 0; }
-        100% { background-position-x: 1000px; }
-    }
-
-    /* 3. 3D Tactile Buttons (Click Effect) */
+    /* 3. 3D "Arc Reactor" Push Buttons */
     div.stButton > button {
-        background-color: #21262d !important;
-        color: #ffffff !important;
-        border: 1px solid #30363d !important;
-        border-radius: 10px !important;
-        box-shadow: 0 4px 0 #000000 !important;
+        background: rgba(0, 212, 255, 0.1) !important;
+        color: #00d4ff !important;
+        border: 1px solid #00d4ff !important;
+        border-radius: 4px !important;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-weight: 700 !important;
+        /* Mechanical depth shadow */
+        box-shadow: 0 4px 0 #005a70, 0 0 15px rgba(0, 212, 255, 0.2) !important;
         transition: all 0.1s ease !important;
     }
 
     div.stButton > button:hover {
-        border-color: #58a6ff !important;
+        background: rgba(0, 212, 255, 0.2) !important;
+        box-shadow: 0 5px 0 #005a70, 0 0 25px rgba(0, 212, 255, 0.4) !important;
         transform: translateY(-1px);
-        box-shadow: 0 5px 0 #000000 !important;
     }
 
+    /* The Mechanical "Press" Effect */
     div.stButton > button:active {
         transform: translateY(4px) !important;
-        box-shadow: 0 0 0 #000000 !important;
-        background-color: #161b22 !important;
+        box-shadow: 0 0 0 #005a70, inset 0 0 10px rgba(0, 212, 255, 0.5) !important;
     }
 
-    /* 4. Glassmorphism for Dashboard Cards */
+    /* 4. Stark Glass Panels (Metrics & Forms) */
     [data-testid="stMetric"], .stForm, .stExpander {
-        background: rgba(22, 27, 34, 0.85) !important;
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(240, 246, 252, 0.1) !important;
-        border-radius: 15px !important;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
-        z-index: 1; /* Ensures cards stay above the waves */
+        background: rgba(0, 20, 40, 0.7) !important;
+        backdrop-filter: blur(10px);
+        border: 1px solid #00d4ff !important;
+        border-left: 5px solid #ff0000 !important; /* Hot Rod Red Accent */
+        border-radius: 0px !important;
+        box-shadow: 0 0 20px rgba(0, 212, 255, 0.1) !important;
+        margin-bottom: 20px !important;
     }
 
-    /* Table & Metric Value Glow */
-    [data-testid="stMetricValue"] {
-        color: #58a6ff !important;
-        text-shadow: 0 0 10px rgba(88, 166, 255, 0.4);
+    /* 5. Animated HUD Grid Glow */
+    h1, h2, h3 {
+        color: #00d4ff !important;
+        text-shadow: 0 0 10px #00d4ff;
+        text-transform: uppercase;
     }
+
+    /* Data Points Metric Glow */
+    [data-testid="stMetricValue"] {
+        color: #00d4ff !important;
+        text-shadow: 0 0 15px rgba(0, 212, 255, 0.8);
+    }
+
+    /* Sidebar HUD Styling */
+    [data-testid="stSidebar"] {
+        background-color: #02060c !important;
+        border-right: 2px solid #ff0000 !important;
+    }
+
+    /* Custom Scrollbar for Stark Tech */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: #02060c; }
+    ::-webkit-scrollbar-thumb { background: #ff0000; }
 </style>
 """, unsafe_allow_html=True)
 
