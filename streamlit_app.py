@@ -9,89 +9,111 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- ANIMATED GREEN FOREST THEME ---
-st.markdown(f"""
+# --- DEEP FOREST ANIMATED GIF & EMERALD GLASS THEME ---
+st.markdown("""
 <style>
-    /* 1. Global Background: Forest GIF */
-    [data-testid="stAppViewContainer"] {{
-        background-image: url("https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeDBhMm1waHlneTZyYWJtbDYzNnFyb3l0cjMzYmFjcTl4YzRyZjQyMiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/UxTZDNv0Zej4s/giphy.gif");
+    /* 1. Animated Forest Background */
+    [data-testid="stAppViewContainer"] {
+        background-image: url("https://jumpshare.com/share/KyoIv4ezVwlVuqsHMcL2");
         background-size: cover;
         background-position: center;
         background-attachment: fixed;
-        color: #ffffff;
-    }}
+    }
 
-    /* Overlay to ensure text readability against the GIF */
-    [data-testid="stAppViewContainer"]::before {{
+    /* Dark Overlay to ensure text readability over the GIF */
+    [data-testid="stAppViewContainer"]::before {
         content: "";
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0, 0, 0, 0.3); /* Darkens the forest slightly */
+        background: rgba(0, 20, 10, 0.4); /* Deep green tint */
         z-index: 0;
         pointer-events: none;
-    }}
+    }
 
-    /* 2. 3D "Moss & Wood" Tactile Buttons */
-    div.stButton > button {{
-        background: rgba(34, 74, 34, 0.8) !important; /* Deep Forest Green */
-        color: white !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        border-radius: 8px !important;
-        padding: 0.6rem 1.2rem !important;
-        font-weight: 700 !important;
-        /* Thick 3D Shadow */
-        box-shadow: 0 5px 0px #142d14 !important;
+    /* 2. 3D "Emerald" Tactile Buttons */
+    div.stButton > button {
+        background: rgba(46, 125, 50, 0.2) !important;
+        color: #e8f5e9 !important;
+        border: 1px solid rgba(165, 214, 167, 0.4) !important;
+        border-radius: 12px !important;
+        font-weight: 600 !important;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        /* Deep 3D Shadow */
+        box-shadow: 0 4px 0px #1b5e20, 0 8px 15px rgba(0,0,0,0.4) !important;
         transition: all 0.1s ease !important;
         backdrop-filter: blur(5px);
-    }}
+    }
 
-    div.stButton > button:hover {{
-        background: rgba(45, 100, 45, 0.9) !important;
+    div.stButton > button:hover {
+        background: rgba(46, 125, 50, 0.4) !important;
+        border-color: #a5d6a7 !important;
         transform: translateY(-2px);
-        box-shadow: 0 7px 0px #142d14 !important;
-    }}
+        box-shadow: 0 6px 0px #1b5e20, 0 12px 20px rgba(0,0,0,0.5) !important;
+    }
 
-    /* The "Mechanical Log" Press Effect */
-    div.stButton > button:active {{
-        transform: translateY(5px) !important;
+    /* The "Press" Animation */
+    div.stButton > button:active {
+        transform: translateY(4px) !important;
         box-shadow: 0 0px 0px transparent !important;
-    }}
+        background: #2e7d32 !important;
+    }
 
     /* 3. Forest Glass Panels (Metrics & Forms) */
-    [data-testid="stMetric"], .stForm, .stExpander {{
-        background: rgba(255, 255, 255, 0.1) !important;
-        backdrop-filter: blur(12px) !important;
+    [data-testid="stMetric"], .stForm, .stExpander {
+        background: rgba(0, 30, 15, 0.6) !important;
+        backdrop-filter: blur(15px) saturate(120%) !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-radius: 15px !important;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3) !important;
-        z-index: 1;
-    }}
+        border-radius: 20px !important;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6) !important;
+        margin-bottom: 20px !important;
+    }
 
-    /* 4. Glowing Typography */
-    h1 {{
-        font-family: 'Georgia', serif;
-        font-weight: 900 !important;
+    /* 4. "Breathing" Forest Title */
+    h1 {
         color: #ffffff !important;
-        text-shadow: 2px 2px 15px rgba(0, 50, 0, 1);
-        text-align: center;
-    }}
+        text-shadow: 0 0 15px rgba(76, 175, 80, 0.8);
+        animation: forestBreath 4s ease-in-out infinite;
+    }
 
-    [data-testid="stMetricValue"] {{
-        color: #b9ffb9 !important; /* Soft Lime Green */
-        text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+    @keyframes forestBreath {
+        0%, 100% { opacity: 0.9; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.01); }
+    }
+
+    /* Metric Styling */
+    [data-testid="stMetricValue"] {
+        color: #81c784 !important; /* Soft leaf green */
         font-weight: 800 !important;
-    }}
+        text-shadow: 0 0 10px rgba(0,0,0,0.5);
+    }
+    
+    [data-testid="stMetricLabel"] {
+        color: #c8e6c9 !important;
+    }
+
+    /* 5. Blinking "Active" Node */
+    [data-testid="stMetric"]::after {
+        content: "";
+        position: absolute;
+        top: 15px; right: 15px;
+        width: 8px; height: 8px;
+        background: #69f0ae;
+        border-radius: 50%;
+        animation: leafBlink 2s infinite;
+    }
+
+    @keyframes leafBlink {
+        0% { box-shadow: 0 0 0 0 rgba(105, 240, 174, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(105, 240, 174, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(105, 240, 174, 0); }
+    }
 
     /* Sidebar Styling */
-    [data-testid="stSidebar"] {{
-        background-color: rgba(0, 20, 0, 0.8) !important;
-        backdrop-filter: blur(10px);
-        border-right: 1px solid rgba(255, 255, 255, 0.1);
-    }}
-
-    /* Custom Green Scrollbar */
-    ::-webkit-scrollbar {{ width: 8px; }}
-    ::-webkit-scrollbar-thumb {{ background: rgba(0, 255, 0, 0.2); border-radius: 10px; }}
+    [data-testid="stSidebar"] {
+        background-color: rgba(0, 15, 5, 0.9) !important;
+        border-right: 1px solid rgba(76, 175, 80, 0.2);
+    }
 </style>
 """, unsafe_allow_html=True)
 
