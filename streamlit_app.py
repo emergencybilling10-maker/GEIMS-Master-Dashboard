@@ -9,6 +9,93 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
+# --- SHARP FOREST HD + 3D TACTILE INTERFACE ---
+st.markdown("""
+<style>
+    /* 1. THE MOVING BACKGROUND: SHARP & CLEAR */
+    [data-testid="stAppViewContainer"] {
+        background-image: url("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdDd5b3UzbDg4czZvcDR3b2JqNHpybmpvMmxwcTN5OHhoNTcwbHpvbSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/vnd963U745GWn3xVfX/giphy.gif") !important;
+        background-size: cover !important;
+        background-position: center !important;
+        background-attachment: fixed !important;
+    }
+
+    /* 2. THE VISIBILITY OVERLAY: Clear but Darkened (No Blur) */
+    [data-testid="stAppViewContainer"]::before {
+        content: "";
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        /* Dark tint only - removed backdrop-filter blur to keep GIF sharp */
+        background: rgba(0, 5, 0, 0.6); 
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    /* 3. PREMIUM 3D TACTILE BUTTONS */
+    div.stButton > button {
+        background: rgba(255, 255, 255, 0.1) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(144, 238, 144, 0.3) !important;
+        border-radius: 10px !important;
+        padding: 0.6rem 1.4rem !important;
+        font-weight: 700 !important;
+        text-transform: uppercase;
+        /* Professional 3D Shadow */
+        box-shadow: 0 5px 0px #081a08, 0 8px 15px rgba(0,0,0,0.5) !important;
+        transition: all 0.1s ease !important;
+        backdrop-filter: blur(10px);
+    }
+
+    div.stButton > button:hover {
+        background: rgba(255, 255, 255, 0.15) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 7px 0px #081a08, 0 12px 20px rgba(0,0,0,0.6) !important;
+    }
+
+    /* The "3D Click" Effect */
+    div.stButton > button:active {
+        transform: translateY(5px) !important;
+        box-shadow: 0 0px 0px transparent !important;
+        background: rgba(144, 238, 144, 0.3) !important;
+    }
+
+    /* 4. FROSTED GLASS PANELS (Keeps cards clear but distinct) */
+    [data-testid="stMetric"], .stForm, .stExpander {
+        background: rgba(10, 20, 10, 0.7) !important;
+        backdrop-filter: blur(15px) saturate(140%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 15px !important;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8) !important;
+        z-index: 1;
+        margin-bottom: 20px !important;
+    }
+
+    /* 5. TYPOGRAPHY SHARPNESS */
+    h1 {
+        font-weight: 800 !important;
+        color: #ffffff !important;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
+        text-align: center;
+    }
+
+    [data-testid="stMetricValue"] {
+        color: #90ee90 !important;
+        text-shadow: 0 0 10px rgba(144, 238, 144, 0.4);
+        font-weight: 800 !important;
+    }
+
+    /* Sidebar Fix */
+    [data-testid="stSidebar"] {
+        background-color: rgba(5, 10, 5, 0.96) !important;
+        border-right: 1px solid rgba(144, 238, 144, 0.1);
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: rgba(144, 238, 144, 0.4); border-radius: 10px; }
+</style>
+""", unsafe_allow_html=True)
+
 # --- 1. SECURE DATABASE CONNECTION ---
 @st.cache_resource
 def get_db():
