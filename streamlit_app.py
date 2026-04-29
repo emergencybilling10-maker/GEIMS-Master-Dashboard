@@ -280,73 +280,71 @@ with c_col5:
     else:
         st.error("TPA PDF Missing")
 
-# --- 7. SIDEBAR: FUTURE BOOKING & ADMIN ---
-show_dashboard = False 
+import requests
+from bs4 import BeautifulSoup
 
-# First, we check the Admin Panel at the top or bottom to set the state
-# To make it work smoothly, let's capture the password status first
-with st.sidebar:
-    st.header("🛡️ Admin Panel")
-    admin_pw = st.text_input("Admin Password", type="password", key="sidebar_admin_pw")
-    if admin_pw == "GeimsAdmin99":
-        show_dashboard = True
-        st.success("Admin Access Granted")
+def sync_hms_portal():
+    # 1. SETUP SESSION & CREDENTIALS
+    login_url = "https://hms.geimshospital.com/Default.aspx"
+    status_url = "https://hms.geimshospital.com/ATD/BedStatus.aspx?MPG=P214&Mpg=P214&irtrf=96665B8A-715C-42A3-AF98-F254880791B5"
     
-    st.divider()
-    st.header("📅 Future Booking Control")
-    
-    # --- ADDING NEW BOOKINGS (Anyone can add) ---
-    with st.expander("📝 ADD FUTURE BOOKING"):
-        with st.form("future_form", clear_on_submit=True):
-            f_name = st.text_input("Patient Name")
-            f_uhid = st.text_input("UHID No.")
-            f_dr = st.text_input("Doctor Name")
-            f_date = st.date_input("Booking Date")
-            f_room = st.text_input("Pre-decided Bed ID")
-            f_cat = st.selectbox("Category", ["SELF PAY", "OTHER"])
-            f_pref = st.selectbox("Bed Preference", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
+    # Target Credentials
+    username = "C7103193"
+    password = "0123"
+
+    with requests.Session() as s:
+        try:
+            # 2. FETCH LOGIN TOKENS
+            res = s.get(login_url, verify=False) # verify=False if SSL is internal/expired
+            soup = BeautifulSoup(res.text, 'html.parser')
             
-            if st.form_submit_button("Save"):
-                if f_name and f_uhid:
-                    db.collection("future_bookings").add({
-                        "name": f_name, 
-                        "uhid": f_uhid, 
-                        "dr": f_dr, 
-                        "book_date": f_date.strftime('%Y-%m-%d'), 
-                        "category": f_cat, 
-                        "preference": f_pref, 
-                        "pref_bed": f_room,
-                        "timestamp": datetime.now(tz)
-                    })
-                    if 'cached_book_list' in st.session_state: del st.session_state['cached_book_list']
-                    st.toast(f"Booking Saved for {f_name}", icon="📅")
-                    st.rerun()
-                else:
-                    st.error("Name and UHID required!")
-
-    # --- VIEWING SAVED BOOKINGS ---
-    st.markdown("### 📋 Scheduled Bookings")
-    future_data = db.collection("future_bookings").order_by("book_date").get()
-    
-    if future_data:
-        for doc in future_data:
-            b = doc.to_dict()
-            with st.expander(f"👤 {b['name']} ({b['book_date']})"):
-                st.write(f"**UHID:** {b['uhid']}")
-                st.write(f"**Doctor:** {b['dr']}")
-                st.write(f"**Pref:** {b['preference']} | **Bed:** {b['pref_bed']}")
+            # Extract ASP.NET hidden fields
+            viewstate = soup.find('input', attrs={'name': '__VIEWSTATE'})['value']
+            validation = soup.find('input', attrs={'name': '__EVENTVALIDATION'})['value']
+            
+            # 3. ATTEMPT LOGIN
+            login_payload = {
+                '__VIEWSTATE': viewstate,
+                '__EVENTVALIDATION': validation,
+                'txtUserName': username,  # Adjust IDs if 'Inspect Element' shows different
+                'txtPassword': password,
+                'btnLogin': 'Login'
+            }
+            
+            s.post(login_url, data=login_payload)
+            
+            # 4. FETCH BED STATUS PAGE
+            response = s.get(status_url)
+            status_soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # 5. PARSE & SYNC (Logic depends on the portal's HTML structure)
+            # This looks for 'divs' or 'spans' that usually represent beds
+            beds = status_soup.find_all('div', style=True) 
+            
+            for bed in beds:
+                bed_text = bed.get_text().strip()
+                bg_color = bed.get('style', '')
                 
-                # --- ADMIN-ONLY CANCELLATION LOGIC ---
-                if st.button(f"Cancel {b['uhid']}", key=f"del_{doc.id}"):
-                    if show_dashboard: # Check if admin password was correct
-                        db.collection("future_bookings").document(doc.id).delete()
-                        if 'cached_book_list' in st.session_state: del st.session_state['cached_book_list']
-                        st.toast(f"Booking for {b['uhid']} Deleted", icon="🗑️")
-                        st.rerun()
-                    else:
-                        st.error("❌ Admin Password Required to Cancel!")
-    else:
-        st.info("No future bookings scheduled.")
+                # Detect Status based on Color (Common in HMS portals)
+                # Red/Pink (#FF...) usually means Occupied, Green/White Vacant
+                status = "ALLOTTED" if "pink" in bg_color.lower() or "red" in bg_color.lower() else "VACANT"
+                
+                # Match bed ID and update Firestore
+                if bed_text in all_bed_ids:
+                    db.collection("beds").document(bed_text).update({"status": status})
+            
+            st.toast("🧬 HMS Portal Sync Complete!", icon="📡")
+            st.rerun()
+
+        except Exception as e:
+            st.error(f"Sync Interrupt: {e}")
+
+# --- ADD SYNC BUTTON TO YOUR SIDEBAR ---
+with st.sidebar:
+    st.divider()
+    if st.button("🚀 SYNC LIVE WITH HIS PORTAL"):
+        with st.spinner("Connecting to GEIMS Neural Network..."):
+            sync_hms_portal()
         
         # 📋 REPORTS
         st.subheader("📋 Reports")
