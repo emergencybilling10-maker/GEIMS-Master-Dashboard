@@ -9,90 +9,104 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- PRISM GLASS & LIQUID FLOW ANIMATED THEME ---
+# --- CINEMATIC SATIN & BLINKING GLASS THEME ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
-
-    /* 1. Dynamic Liquid Mesh Background */
+    /* 1. Video-Style Animated Liquid Background */
     [data-testid="stAppViewContainer"] {
-        background: linear-gradient(125deg, #0a0c10 0%, #1a1c2c 25%, #0f2a3a 50%, #1a1c2c 75%, #0a0c10 100%) !important;
+        background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
         background-size: 400% 400% !important;
-        animation: meshFlow 15s ease infinite !important;
-        font-family: 'Inter', sans-serif;
-        color: #ffffff;
+        animation: gradientVideo 15s ease infinite !important;
+        transition: all 0.5s ease;
     }
 
-    @keyframes meshFlow {
+    /* Neutralizing overlay to suit both light and dark modes */
+    [data-testid="stAppViewContainer"]::before {
+        content: "";
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: brightness(0.7) contrast(1.2); /* Adjusts video depth */
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    @keyframes gradientVideo {
         0% { background-position: 0% 50%; }
         50% { background-position: 100% 50%; }
         100% { background-position: 0% 50%; }
     }
 
-    /* 2. Soft-Touch 3D Buttons (Mechanical Depth) */
+    /* 2. 3D Tactile "Blinking" Buttons */
     div.stButton > button {
-        background: rgba(255, 255, 255, 0.08) !important;
-        color: #ffffff !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        border-radius: 12px !important;
-        padding: 0.6rem 1.5rem !important;
+        background: rgba(255, 255, 255, 0.2) !important;
+        color: white !important;
+        border: 1px solid rgba(255, 255, 255, 0.4) !important;
+        border-radius: 8px !important;
         font-weight: 600 !important;
-        /* Professional 3D Shadow Stack */
-        box-shadow: 0 4px 0px rgba(0, 0, 0, 0.4), 0 8px 15px rgba(0, 0, 0, 0.3) !important;
-        transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-shadow: 0 4px 0px rgba(0, 0, 0, 0.3) !important;
+        transition: all 0.2s ease !important;
+        backdrop-filter: blur(5px);
     }
 
     div.stButton > button:hover {
-        background: rgba(255, 255, 255, 0.12) !important;
-        border-color: rgba(255, 255, 255, 0.4) !important;
+        background: rgba(255, 255, 255, 0.3) !important;
+        animation: blink 1s infinite alternate; /* The Blinking Effect */
         transform: translateY(-2px);
-        box-shadow: 0 6px 0px rgba(0, 0, 0, 0.4), 0 12px 20px rgba(0, 0, 0, 0.4) !important;
     }
 
-    /* The "Soft-Click" 3D Animation */
+    /* The "Press" Animation */
     div.stButton > button:active {
         transform: translateY(4px) !important;
         box-shadow: 0 0px 0px transparent !important;
-        background: rgba(255, 255, 255, 0.2) !important;
     }
 
-    /* 3. Frosted Prism Panels (Metrics & Forms) */
+    @keyframes blink {
+        from { box-shadow: 0 0 5px rgba(255,255,255,0.2); }
+        to { box-shadow: 0 0 20px rgba(255,255,255,0.6); }
+    }
+
+    /* 3. Shimmering Video Panels (Metrics & Forms) */
     [data-testid="stMetric"], .stForm, .stExpander {
-        background: rgba(255, 255, 255, 0.04) !important;
-        backdrop-filter: blur(20px) saturate(120%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-radius: 20px !important;
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5) !important;
-        margin-bottom: 20px !important;
+        background: rgba(255, 255, 255, 0.15) !important;
+        backdrop-filter: blur(25px) saturate(150%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        border-radius: 16px !important;
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2) !important;
+        position: relative;
+        overflow: hidden;
     }
 
-    /* 4. Elegant Clean Typography */
-    h1 {
-        font-weight: 800 !important;
-        letter-spacing: -1px;
-        background: linear-gradient(to right, #ffffff, #a5b4fc);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 1.5rem !important;
+    /* Blinking "Live" indicator inside panels */
+    [data-testid="stMetric"]::after {
+        content: "";
+        position: absolute;
+        top: 10px; right: 10px;
+        width: 8px; height: 8px;
+        background: #00ff00;
+        border-radius: 50%;
+        animation: liveBlink 1.5s infinite;
     }
 
-    /* Metric Styling */
+    @keyframes liveBlink {
+        0% { opacity: 1; transform: scale(1); }
+        100% { opacity: 0; transform: scale(2.5); }
+    }
+
+    /* 4. Adaptive Text (Suits Light/Dark) */
+    h1, h2, h3, p, label {
+        color: white !important;
+        text-shadow: 1px 1px 10px rgba(0,0,0,0.3);
+    }
+
     [data-testid="stMetricValue"] {
         color: #ffffff !important;
-        font-weight: 700 !important;
+        font-weight: 800 !important;
     }
 
-    /* Sidebar Glassmorphism */
-    [data-testid="stSidebar"] {
-        background-color: rgba(5, 7, 10, 0.9) !important;
-        border-right: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    /* Elegant Custom Scrollbar */
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 10px; }
 </style>
 """, unsafe_allow_html=True)
 
