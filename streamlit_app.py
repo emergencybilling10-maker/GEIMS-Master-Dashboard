@@ -9,50 +9,41 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- CINEMATIC SATIN & BLINKING GLASS THEME ---
+# --- CLOUD SATIN: LIGHT VIDEO & SOFT BLINK THEME ---
 st.markdown("""
 <style>
-    /* 1. Video-Style Animated Liquid Background */
+    /* 1. Light Video Background (Soft Pastel Flow) */
     [data-testid="stAppViewContainer"] {
-        background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+        background: linear-gradient(-45deg, #e3f2fd, #f3e5f5, #e8f5e9, #fff3e0);
         background-size: 400% 400% !important;
-        animation: gradientVideo 15s ease infinite !important;
+        animation: cloudFlow 20s ease infinite !important;
         transition: all 0.5s ease;
     }
 
-    /* Neutralizing overlay to suit both light and dark modes */
-    [data-testid="stAppViewContainer"]::before {
-        content: "";
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: brightness(0.7) contrast(1.2); /* Adjusts video depth */
-        z-index: 0;
-        pointer-events: none;
-    }
-
-    @keyframes gradientVideo {
+    @keyframes cloudFlow {
         0% { background-position: 0% 50%; }
         50% { background-position: 100% 50%; }
         100% { background-position: 0% 50%; }
     }
 
-    /* 2. 3D Tactile "Blinking" Buttons */
+    /* 2. 3D Tactile "Soft-Blink" Buttons */
     div.stButton > button {
-        background: rgba(255, 255, 255, 0.2) !important;
-        color: white !important;
-        border: 1px solid rgba(255, 255, 255, 0.4) !important;
-        border-radius: 8px !important;
+        background: rgba(255, 255, 255, 0.6) !important;
+        color: #444 !important;
+        border: 1px solid rgba(255, 255, 255, 0.8) !important;
+        border-radius: 10px !important;
         font-weight: 600 !important;
-        box-shadow: 0 4px 0px rgba(0, 0, 0, 0.3) !important;
+        /* Subtle 3D shadow for light theme */
+        box-shadow: 0 4px 0px rgba(0, 0, 0, 0.1) !important;
         transition: all 0.2s ease !important;
         backdrop-filter: blur(5px);
     }
 
     div.stButton > button:hover {
-        background: rgba(255, 255, 255, 0.3) !important;
-        animation: blink 1s infinite alternate; /* The Blinking Effect */
+        background: rgba(255, 255, 255, 0.9) !important;
+        animation: softBlink 1.5s infinite alternate; 
         transform: translateY(-2px);
+        color: #000 !important;
     }
 
     /* The "Press" Animation */
@@ -61,52 +52,59 @@ st.markdown("""
         box-shadow: 0 0px 0px transparent !important;
     }
 
-    @keyframes blink {
-        from { box-shadow: 0 0 5px rgba(255,255,255,0.2); }
-        to { box-shadow: 0 0 20px rgba(255,255,255,0.6); }
+    @keyframes softBlink {
+        from { box-shadow: 0 0 5px rgba(255,255,255,0.8); }
+        to { box-shadow: 0 0 20px rgba(0, 123, 255, 0.2); }
     }
 
-    /* 3. Shimmering Video Panels (Metrics & Forms) */
+    /* 3. Frosted Pearl Panels (Metrics & Forms) */
     [data-testid="stMetric"], .stForm, .stExpander {
-        background: rgba(255, 255, 255, 0.15) !important;
-        backdrop-filter: blur(25px) saturate(150%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        border-radius: 16px !important;
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2) !important;
+        background: rgba(255, 255, 255, 0.4) !important;
+        backdrop-filter: blur(20px) saturate(120%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.5) !important;
+        border-radius: 20px !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05) !important;
         position: relative;
-        overflow: hidden;
     }
 
-    /* Blinking "Live" indicator inside panels */
+    /* Blinking "Live" indicator (Soft Cyan) */
     [data-testid="stMetric"]::after {
         content: "";
         position: absolute;
-        top: 10px; right: 10px;
-        width: 8px; height: 8px;
-        background: #00ff00;
+        top: 12px; right: 12px;
+        width: 10px; height: 10px;
+        background: #00bcd4;
         border-radius: 50%;
-        animation: liveBlink 1.5s infinite;
+        animation: pulseLive 2s infinite;
     }
 
-    @keyframes liveBlink {
+    @keyframes pulseLive {
         0% { opacity: 1; transform: scale(1); }
-        100% { opacity: 0; transform: scale(2.5); }
+        100% { opacity: 0; transform: scale(3); }
     }
 
-    /* 4. Adaptive Text (Suits Light/Dark) */
+    /* 4. High-Contrast Professional Text */
     h1, h2, h3, p, label {
-        color: white !important;
-        text-shadow: 1px 1px 10px rgba(0,0,0,0.3);
+        color: #2c3e50 !important;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
     [data-testid="stMetricValue"] {
-        color: #ffffff !important;
+        color: #1a237e !important;
         font-weight: 800 !important;
+        font-size: 2.2rem !important;
     }
 
-    /* Custom Scrollbar */
+    /* Sidebar Styling */
+    [data-testid="stSidebar"] {
+        background-color: rgba(255, 255, 255, 0.5) !important;
+        backdrop-filter: blur(10px);
+        border-right: 1px solid rgba(0,0,0,0.05);
+    }
+
+    /* Clean Scrollbar */
     ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
 </style>
 """, unsafe_allow_html=True)
 
