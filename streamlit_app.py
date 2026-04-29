@@ -9,17 +9,18 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- FULL ECO-TECH FOREST THEME WITH REINFORCED VIDEO ---
+# --- FULL ECO-TECH FOREST THEME (REINFORCED) ---
 st.markdown("""
 <style>
-    /* 1. STACKING FIX: Ensure Streamlit layers are transparent */
+    /* 1. FORCE TRANSPARENCY ON ALL STREAMLIT LAYERS */
     [data-testid="stAppViewContainer"], 
     [data-testid="stHeader"], 
+    [data-testid="stSidebar"],
     .main {
-        background: transparent !important;
+        background-color: transparent !important;
     }
 
-    /* 2. THE REINFORCED VIDEO LAYER */
+    /* 2. THE BACKGROUND VIDEO (Z-INDEX FIX) */
     #bg-video {
         position: fixed;
         top: 0;
@@ -28,47 +29,47 @@ st.markdown("""
         height: 100vh;
         object-fit: cover;
         z-index: -1000;
-        /* Brightness/Contrast adjusted for 2026 Dark Mode Visibility */
-        filter: brightness(0.55) contrast(1.1) saturate(1.2);
+        /* Increased brightness and contrast for better dark-mode visibility */
+        filter: brightness(0.7) contrast(1.1) saturate(1.2);
         pointer-events: none;
     }
 
     /* 3. 3D TACTILE BUTTONS (PUMP-ACTION PUSH) */
     div.stButton > button {
-        background: rgba(255, 255, 255, 0.08) !important;
+        background: rgba(255, 255, 255, 0.1) !important;
         color: #ffffff !important;
-        border: 1px solid rgba(144, 238, 144, 0.3) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
         border-radius: 10px !important;
         padding: 0.7rem 1.5rem !important;
         font-weight: 700 !important;
         text-transform: uppercase;
         letter-spacing: 1px;
-        /* Deep mechanical 3D shadow */
-        box-shadow: 0 5px 0px #0b1d0b, 0 8px 15px rgba(0,0,0,0.4) !important;
+        /* Mechanical 3D shadow: 6px depth */
+        box-shadow: 0 6px 0px #0b1d0b, 0 10px 20px rgba(0,0,0,0.5) !important;
         transition: all 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
         backdrop-filter: blur(8px);
     }
 
     div.stButton > button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 7px 0px #0b1d0b, 0 12px 20px rgba(0,0,0,0.5) !important;
+        box-shadow: 0 8px 0px #0b1d0b, 0 15px 25px rgba(0,0,0,0.6) !important;
         border-color: #90ee90 !important;
     }
 
-    /* The "Mechanical Press" animation */
+    /* The "Mechanical Press" animation: Collapse shadow completely */
     div.stButton > button:active {
-        transform: translateY(5px) !important;
+        transform: translateY(6px) !important;
         box-shadow: 0 0px 0px transparent !important;
-        background: rgba(144, 238, 144, 0.2) !important;
+        background: rgba(144, 238, 144, 0.3) !important;
     }
 
-    /* 4. FROSTED FOREST GLASS (CARDS) */
+    /* 4. FROSTED FOREST GLASS (CARDS & FORMS) */
     [data-testid="stMetric"], .stForm, .stExpander {
-        background: rgba(0, 20, 0, 0.6) !important;
-        backdrop-filter: blur(20px) saturate(150%) !important;
+        background: rgba(0, 20, 0, 0.65) !important;
+        backdrop-filter: blur(25px) saturate(160%) !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
         border-radius: 20px !important;
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7) !important;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8) !important;
         margin-bottom: 25px !important;
     }
 
@@ -77,18 +78,12 @@ st.markdown("""
         font-size: 3rem !important;
         color: #ffffff !important;
         text-shadow: 0 0 20px rgba(144, 238, 144, 0.6), 2px 2px 5px #000;
-        letter-spacing: -1px;
+        text-align: center;
     }
 
     [data-testid="stMetricValue"] {
         color: #90ee90 !important;
         text-shadow: 0 0 15px rgba(144, 238, 144, 0.4);
-    }
-
-    /* Sidebar Interface */
-    [data-testid="stSidebar"] {
-        background-color: rgba(5, 10, 5, 0.95) !important;
-        border-right: 1px solid rgba(144, 238, 144, 0.15);
     }
 </style>
 
