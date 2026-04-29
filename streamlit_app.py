@@ -9,106 +9,141 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- 3D HEARTBEAT / MONITOR THEME INJECTION ---
+# --- ADVANCED 3D HOLO-MONITOR THEME ---
 st.markdown("""
     <style>
-    /* 1. 3D Perspective Background */
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
+
+    /* 1. The 3D World Space */
     .stApp {
-        background-color: #010801;
+        background-color: #000b00;
+        /* Perspective grid floor */
         background-image: 
-            linear-gradient(rgba(0, 255, 65, 0.1) 2px, transparent 2px),
-            linear-gradient(90deg, rgba(0, 255, 65, 0.1) 2px, transparent 2px);
-        background-size: 50px 50px;
-        /* This creates the 3D floor effect */
-        perspective: 1000px;
+            radial-gradient(circle at 50% 50%, rgba(0, 255, 65, 0.15), transparent),
+            linear-gradient(rgba(0, 255, 65, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 255, 65, 0.1) 1px, transparent 1px);
+        background-size: 100% 100%, 40px 40px, 40px 40px;
         color: #00ff41;
+        perspective: 1200px;
         overflow-x: hidden;
     }
 
-    /* 2. Floating 3D Cards Effect */
-    [data-testid="stMetric"], .stForm, .stExpander, .stDownloadButton, div[role="button"] {
-        background: rgba(0, 30, 0, 0.7) !important;
-        border: 1px solid rgba(0, 255, 65, 0.4) !important;
-        border-radius: 15px !important;
-        backdrop-filter: blur(8px);
+    /* 2. Floating Glass Slabs (Advanced 3D Cards) */
+    [data-testid="stMetric"], .stForm, .stExpander, div[role="button"] {
+        background: rgba(0, 40, 0, 0.2) !important;
+        border-top: 2px solid rgba(0, 255, 65, 0.6) !important;
+        border-left: 2px solid rgba(0, 255, 65, 0.6) !important;
+        border-bottom: 2px solid rgba(0, 255, 65, 0.1) !important;
+        border-right: 2px solid rgba(0, 255, 65, 0.1) !important;
+        border-radius: 10px !important;
+        backdrop-filter: blur(12px) saturate(150%);
         
-        /* 3D Shadows & Hover */
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 10px rgba(0, 255, 65, 0.1);
-        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease !important;
-        transform: translateZ(0);
+        /* Deep 3D Shadow Stack */
+        box-shadow: 
+            10px 10px 20px rgba(0, 0, 0, 0.6),
+            -2px -2px 10px rgba(0, 255, 65, 0.1),
+            inset 0 0 15px rgba(0, 255, 65, 0.05);
+        
+        transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1) !important;
+        transform-style: preserve-3d;
     }
 
-    /* Hover effect to make cards "Pop Out" */
+    /* Hover: Tilt and Lift */
     [data-testid="stMetric"]:hover, .stForm:hover, .stExpander:hover {
-        transform: translateY(-10px) scale(1.02) rotateX(2deg);
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8), 0 0 25px rgba(0, 255, 65, 0.3);
+        transform: translateZ(50px) rotateX(4deg) rotateY(-2deg) translateY(-10px);
+        box-shadow: 
+            25px 25px 50px rgba(0, 0, 0, 0.8),
+            0 0 30px rgba(0, 255, 65, 0.4);
         border-color: #00ff41 !important;
     }
 
-    /* 3. The 3D Heartbeat Line (Scrolling Depth) */
-    .stApp::before {
+    /* 3. Holographic Header (Layered Depth) */
+    h1 {
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 900;
+        text-align: center;
+        letter-spacing: 10px;
+        background: linear-gradient(to bottom, #00ff41 0%, #004411 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        filter: drop-shadow(0 0 10px rgba(0, 255, 65, 0.5));
+        transform: rotateX(10deg);
+        margin-bottom: 40px !important;
+    }
+
+    /* 4. 3D Scanning Light Bar */
+    .stApp::after {
         content: "";
         position: fixed;
-        top: 0;
+        top: -100%;
         left: 0;
         width: 100%;
-        height: 100%;
-        background: repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0, 255, 65, 0.03) 1px, rgba(0, 255, 65, 0.03) 2px);
+        height: 10px;
+        background: rgba(0, 255, 65, 0.5);
+        box-shadow: 0 0 30px #00ff41, 0 0 60px #00ff41;
+        animation: h-scan 6s ease-in-out infinite;
+        z-index: 9999;
         pointer-events: none;
-        z-index: 1;
+        opacity: 0.4;
     }
 
-    /* 4. 3D Glowing Text */
-    h1 {
-        text-transform: uppercase;
-        font-weight: 900;
-        letter-spacing: 5px;
-        color: #00ff41 !important;
-        text-shadow: 2px 2px 0px #003300, 4px 4px 0px #001100, 0 0 20px rgba(0, 255, 65, 0.5);
-        transform: skew(-5deg);
+    @keyframes h-scan {
+        0% { top: -10%; }
+        50% { top: 110%; }
+        100% { top: -10%; }
     }
 
-    /* 5. Vitals Pulse Animation */
-    @keyframes heartbeat3D {
-        0% { transform: scale(1); filter: brightness(1); }
-        10% { transform: scale(1.02); filter: brightness(1.3); }
-        20% { transform: scale(1); filter: brightness(1); }
-        100% { transform: scale(1); filter: brightness(1); }
-    }
-    
-    [data-testid="stMetricValue"] {
-        animation: heartbeat3D 2s infinite;
-        display: inline-block;
-        color: #00ff41 !important;
-    }
-
-    /* 6. 3D Buttons */
+    /* 5. 3D Beveled Buttons */
     .stButton>button {
-        background: linear-gradient(145deg, #002200, #004400);
-        border: 1px solid #00ff41;
+        font-family: 'Orbitron', sans-serif;
+        background: #002200;
+        border: none;
         color: #00ff41;
-        border-radius: 10px;
-        box-shadow: 4px 4px 0px #003300;
-        transition: all 0.2s ease;
+        padding: 10px 25px;
+        border-radius: 5px;
+        position: relative;
+        box-shadow: 0 5px 0 #005511; /* The "Side" of the button */
+        transition: all 0.1s active;
+    }
+
+    .stButton>button:hover {
+        background: #003300;
+        box-shadow: 0 7px 0 #006622;
+        transform: translateY(-2px);
     }
 
     .stButton>button:active {
-        box-shadow: 0px 0px 0px #003300;
-        transform: translate(2px, 2px);
+        box-shadow: 0 1px 0 #005511;
+        transform: translateY(4px);
     }
 
-    /* Sidebar 3D Offset */
+    /* 6. Advanced Vital Pulse on Metrics */
+    [data-testid="stMetricValue"] {
+        text-shadow: 0 0 15px #00ff41;
+        animation: heart-beat 1.2s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+    }
+
+    @keyframes heart-beat {
+        0% { transform: scale(1); }
+        15% { transform: scale(1.1); }
+        30% { transform: scale(1); }
+        45% { transform: scale(1.15); }
+        60% { transform: scale(1); }
+    }
+
+    /* Sidebar Glass UI */
     [data-testid="stSidebar"] {
-        background-color: #000a00;
+        background-color: rgba(0, 5, 0, 0.95);
         border-right: 2px solid #00ff41;
-        box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+    }
+    
+    /* Tables as Neon Grids */
+    .stDataFrame, div[data-testid="stTable"] {
+        border: 1px solid #00ff41;
+        border-radius: 5px;
+        box-shadow: 0 0 20px rgba(0, 255, 65, 0.1);
     }
 
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: #010801; }
-    ::-webkit-scrollbar-thumb { background: #004400; border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: #00ff41; }
     </style>
     """, unsafe_allow_html=True)
 
