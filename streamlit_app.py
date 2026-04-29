@@ -9,6 +9,111 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
+# --- ADVANCED 3D HOLOGRAPHIC THEME ---
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
+    /* 3D Space Setup */
+    .stApp {
+        background: radial-gradient(circle at 50% 50%, #001a00 0%, #000000 100%);
+        perspective: 1500px;
+        color: #00ff41;
+        font-family: 'Orbitron', sans-serif;
+    }
+
+    /* Moving Grid Floor (3D Perspective) */
+    .stApp::before {
+        content: "";
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        width: 200%;
+        height: 200%;
+        background-image: 
+            linear-gradient(rgba(0, 255, 65, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 255, 65, 0.1) 1px, transparent 1px);
+        background-size: 50px 50px;
+        transform: translate(-50%, -20%) rotateX(60deg);
+        z-index: -1;
+        animation: gridMove 10s linear infinite;
+    }
+
+    @keyframes gridMove {
+        0% { background-position: 0 0; }
+        100% { background-position: 0 50px; }
+    }
+
+    /* Holographic Containers */
+    [data-testid="stMetric"], .stForm, .stExpander, div.stButton > button {
+        background: rgba(0, 40, 0, 0.2) !important;
+        backdrop-filter: blur(10px) saturate(180%);
+        border: 1px solid rgba(0, 255, 65, 0.3) !important;
+        border-radius: 15px !important;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.5), inset 0 0 15px rgba(0, 255, 65, 0.1);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    /* 3D Pop-out on Hover */
+    [data-testid="stMetric"]:hover, .stForm:hover {
+        transform: translateZ(50px) translateY(-5px);
+        border-color: #00ff41 !important;
+        box-shadow: 0 0 30px rgba(0, 255, 65, 0.4);
+    }
+
+    /* Glowing Titles */
+    h1, h2, h3 {
+        color: #00ff41 !important;
+        text-shadow: 0 0 15px rgba(0, 255, 65, 0.8);
+        text-transform: uppercase;
+        letter-spacing: 4px;
+    }
+
+    /* 3D Beveled Buttons */
+    .stButton > button {
+        border-bottom: 4px solid #005511 !important;
+        text-shadow: 0 0 5px #00ff41;
+    }
+    .stButton > button:active {
+        transform: translateY(2px);
+        border-bottom: 1px solid #005511 !important;
+    }
+
+    /* Scanning Laser Line */
+    .stApp::after {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: #00ff41;
+        box-shadow: 0 0 20px #00ff41;
+        opacity: 0.3;
+        animation: scan 8s linear infinite;
+        z-index: 100;
+        pointer-events: none;
+    }
+
+    @keyframes scan {
+        0% { top: 0%; }
+        100% { top: 100%; }
+    }
+
+    /* Bed Card Styling */
+    .bed-card {
+        padding: 10px;
+        border-radius: 10px;
+        text-align: center;
+        transition: transform 0.3s ease;
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+    .bed-card:hover {
+        transform: scale(1.05) rotateY(10deg);
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # --- 1. SECURE DATABASE CONNECTION ---
 @st.cache_resource
 def get_db():
