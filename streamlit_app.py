@@ -6,13 +6,10 @@ import json
 from datetime import datetime
 import pytz
 
-# Page Config
-st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
-
-# --- FRACTAL CYBER-CORE + 3D TACTILE INTERFACE ---
+# --- FRACTAL CRYSTAL + ULTRA-GLASS 3D INTERFACE ---
 st.markdown("""
 <style>
-    /* 1. THE MOVING FRACTAL BACKGROUND: SHARP & HD */
+    /* 1. HIGH-BRIGHTNESS FRACTAL BACKGROUND */
     [data-testid="stAppViewContainer"] {
         background-image: url("https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExMDdmeDMyMThlMWswNGR0dnYxdXZvandrZXdpbTZzdTZrazE3Y2V1MyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3ohhwg3O1TGRXHQYh2/giphy.gif") !important;
         background-size: cover !important;
@@ -20,82 +17,87 @@ st.markdown("""
         background-attachment: fixed !important;
     }
 
-    /* 2. THE VISIBILITY OVERLAY: Deep Space Tint (Keeps GIF Sharp) */
+    /* 2. LIGHTER OVERLAY (Better Brightness) */
     [data-testid="stAppViewContainer"]::before {
         content: "";
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
-        /* Dark blue-black tint to contrast the trippy fractal */
-        background: rgba(2, 5, 10, 0.75); 
+        /* Reduced from 0.75 to 0.45 for more vivid background brightness */
+        background: rgba(0, 5, 15, 0.45); 
         z-index: 0;
         pointer-events: none;
     }
 
-    /* 3. PREMIUM 3D TACTILE BUTTONS (PUMP-ACTION) */
+    /* 3. CRYSTAL GLASS PANELS (ULTRA-TRANSPARENT) */
+    [data-testid="stMetric"], .stForm, .stExpander {
+        background: rgba(255, 255, 255, 0.05) !important; /* Low opacity for glass look */
+        backdrop-filter: blur(25px) saturate(200%) !important; /* High blur for frosted effect */
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        border-radius: 20px !important;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5) !important;
+        margin-bottom: 25px !important;
+        color: white !important;
+    }
+
+    /* 4. PREMIUM 3D TACTILE GLASS BUTTONS */
     div.stButton > button {
-        background: rgba(255, 255, 255, 0.05) !important;
-        color: #00e5ff !important; /* Electric Cyan */
-        border: 1px solid rgba(0, 229, 255, 0.3) !important;
-        border-radius: 6px !important;
-        padding: 0.7rem 1.6rem !important;
-        font-weight: 800 !important;
+        background: rgba(255, 255, 255, 0.1) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.4) !important;
+        border-radius: 12px !important;
+        padding: 0.7rem 1.8rem !important;
+        font-weight: 700 !important;
         text-transform: uppercase;
         letter-spacing: 2px;
-        /* The 3D Heavy Shadow */
-        box-shadow: 0 6px 0px #005a70, 0 10px 20px rgba(0,0,0,0.6) !important;
-        transition: all 0.05s ease-in-out !important;
+        /* Deep 3D Mechanical Shadow */
+        box-shadow: 0 6px 0px rgba(255, 255, 255, 0.2), 0 10px 20px rgba(0,0,0,0.4) !important;
+        transition: all 0.1s ease !important;
         backdrop-filter: blur(10px);
     }
 
     div.stButton > button:hover {
-        background: rgba(0, 229, 255, 0.1) !important;
+        background: rgba(255, 255, 255, 0.2) !important;
         transform: translateY(-2px);
-        box-shadow: 0 8px 0px #005a70, 0 15px 25px rgba(0,0,0,0.7) !important;
+        box-shadow: 0 8px 0px rgba(255, 255, 255, 0.3), 0 15px 25px rgba(0,0,0,0.5) !important;
     }
 
-    /* The "3D Gravity" Click - Full Shadow Collapse */
+    /* The "Mechanical Press" - Deep 3D Push */
     div.stButton > button:active {
         transform: translateY(6px) !important;
         box-shadow: 0 0px 0px transparent !important;
-        background: #00e5ff !important;
-        color: #000000 !important;
+        background: rgba(255, 255, 255, 0.3) !important;
     }
 
-    /* 4. TECH-GLASS PANELS (High Transparency) */
-    [data-testid="stMetric"], .stForm, .stExpander {
-        background: rgba(0, 10, 20, 0.8) !important;
-        backdrop-filter: blur(20px) saturate(180%) !important;
-        border: 1px solid rgba(0, 229, 255, 0.2) !important;
-        border-radius: 12px !important;
-        box-shadow: 0 15px 45px rgba(0, 0, 0, 0.9) !important;
-        margin-bottom: 25px !important;
-    }
-
-    /* 5. TYPOGRAPHY: Electric Glow */
+    /* 5. VIBRANT TYPOGRAPHY */
     h1 {
-        font-family: 'Courier New', Courier, monospace;
-        color: #00e5ff !important;
-        text-shadow: 0 0 15px rgba(0, 229, 255, 0.6);
+        font-weight: 900 !important;
+        color: #ffffff !important;
+        text-shadow: 0 5px 15px rgba(0,0,0,0.5);
         text-align: center;
-        letter-spacing: 5px;
+        letter-spacing: 2px;
     }
 
     [data-testid="stMetricValue"] {
         color: #ffffff !important;
-        text-shadow: 0 0 20px #00e5ff;
+        text-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
         font-weight: 800 !important;
     }
-
-    /* Sidebar Interface */
-    [data-testid="stSidebar"] {
-        background-color: rgba(0, 5, 10, 0.98) !important;
-        border-right: 2px solid #00e5ff;
+    
+    [data-testid="stMetricLabel"] {
+        color: rgba(255, 255, 255, 0.8) !important;
+        font-weight: 600 !important;
     }
 
-    /* Custom Electric Scrollbar */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-thumb { background: #00e5ff; border-radius: 10px; }
-    ::-webkit-scrollbar-track { background: #000; }
+    /* Sidebar Glass UI */
+    [data-testid="stSidebar"] {
+        background-color: rgba(0, 0, 0, 0.7) !important;
+        backdrop-filter: blur(15px);
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Professional Scrollbar */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
 </style>
 """, unsafe_allow_html=True)
 
