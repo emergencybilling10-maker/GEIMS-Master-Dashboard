@@ -9,6 +9,87 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
+# --- FUTURISTIC THEME INJECTION ---
+st.markdown("""
+    <style>
+    /* Main App Background */
+    .stApp {
+        background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+        background-size: 400% 400%;
+        animation: gradient 15s ease infinite;
+        color: #00d4ff;
+    }
+    
+    @keyframes gradient {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    /* Titles and Headers */
+    h1, h2, h3 {
+        color: #00d4ff !important;
+        text-shadow: 0 0 10px #00d4ff, 0 0 20px #00d4ff;
+        font-family: 'Courier New', Courier, monospace;
+        letter-spacing: 2px;
+    }
+
+    /* Futuristic Metric Cards */
+    [data-testid="stMetricValue"] {
+        color: #00ffcc !important;
+        font-family: 'Orbitron', sans-serif;
+        text-shadow: 0 0 5px #00ffcc;
+    }
+
+    /* Buttons */
+    .stButton>button {
+        background: rgba(0, 212, 255, 0.1);
+        border: 1px solid #00d4ff;
+        color: #00d4ff;
+        border-radius: 5px;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        font-weight: bold;
+    }
+    
+    .stButton>button:hover {
+        background: #00d4ff;
+        color: #000;
+        box-shadow: 0 0 20px #00d4ff;
+        transform: scale(1.02);
+    }
+
+    /* Forms and Expanders */
+    .stExpander, .stForm {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(0, 212, 255, 0.2) !important;
+        border-radius: 10px !important;
+        backdrop-filter: blur(10px);
+    }
+
+    /* Sidebar Styling */
+    [data-testid="stSidebar"] {
+        background-color: rgba(15, 12, 41, 0.9);
+        border-right: 1px solid #00d4ff;
+    }
+
+    /* Bed status cards animation */
+    .bed-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .bed-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+    }
+
+    /* Horizontal lines */
+    hr {
+        border-top: 1px solid #00d4ff;
+        opacity: 0.3;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 # --- 1. SECURE DATABASE CONNECTION ---
 @st.cache_resource
 def get_db():
