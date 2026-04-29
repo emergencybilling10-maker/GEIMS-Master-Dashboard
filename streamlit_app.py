@@ -9,24 +9,25 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- DARK MODE & WHITE ANIMATED WAVES ---
+# --- DARK MODE + 3D TACTILE + WHITE WAVE THEME ---
 st.markdown("""
 <style>
-    /* Dark Mode Deep Base */
+    /* 1. Deep Dark Background */
     .stApp {
-        background-color: #05070a;
-        color: #e0e0e0;
+        background-color: #0d1117 !important;
+        color: #e6edf3;
     }
 
-    /* White Animated Waves Containers */
-    .wave-container {
+    /* 2. White Animated Waves (Global Overlay) */
+    /* We create a fixed container at the bottom */
+    .wave-wrapper {
         position: fixed;
         width: 100%;
-        height: 150px;
+        height: 15%;
         bottom: 0;
         left: 0;
-        background: transparent;
-        z-index: -1; /* Keep behind all content */
+        z-index: -1; /* Placed behind everything */
+        overflow: hidden;
         pointer-events: none;
     }
 
@@ -35,19 +36,18 @@ st.markdown("""
         bottom: 0;
         left: 0;
         width: 200%;
-        height: 100px;
+        height: 100%;
         background: url('https://raw.githubusercontent.com/front-end-relative/assets/main/wave.png');
         background-size: 1000px 100px;
-        /* Force White Waves using Filters */
-        filter: brightness(0) invert(1) opacity(0.2); 
-        animation: move_wave 15s linear infinite;
+        /* Turn the blue wave asset into semi-transparent white */
+        filter: brightness(0) invert(1) opacity(0.15);
+        animation: move_wave 12s linear infinite;
     }
 
-    .wave2 {
+    .wave-back {
         bottom: 10px;
-        opacity: 0.1;
-        animation: move_wave 10s linear infinite reverse;
-        filter: brightness(0) invert(1) opacity(0.1);
+        filter: brightness(0) invert(1) opacity(0.08);
+        animation: move_wave 8s linear infinite reverse;
     }
 
     @keyframes move_wave {
@@ -55,58 +55,51 @@ st.markdown("""
         100% { transform: translateX(-50%); }
     }
 
-    /* 3D Tactile Button Effect (Dark Mode) */
+    /* 3. 3D Tactile Buttons (The Push Effect) */
     div.stButton > button {
-        background-color: #161b22;
-        color: #ffffff;
-        border: 1px solid #30363d;
-        padding: 10px 20px;
-        border-radius: 12px;
-        font-weight: bold;
-        box-shadow: 0 4px 0px #000000;
-        transition: all 0.1s ease;
+        background-color: #21262d !important;
+        color: #58a6ff !important;
+        border: 1px solid #30363d !important;
+        border-radius: 8px !important;
+        padding: 0.5rem 1rem !important;
+        font-weight: 600 !important;
+        /* The 'Depth' shadow */
+        box-shadow: 0 4px 0 #000000 !important;
+        transition: all 0.1s ease !important;
     }
 
     div.stButton > button:hover {
-        border-color: #ffffff;
+        border-color: #8b949e !important;
         transform: translateY(-1px);
-        box-shadow: 0 5px 0px #000000;
+        box-shadow: 0 5px 0 #000000 !important;
     }
 
+    /* The "3D Click" effect */
     div.stButton > button:active {
-        box-shadow: 0 0px #000000;
-        transform: translateY(4px);
-        background-color: #0d1117;
+        transform: translateY(4px) !important;
+        box-shadow: 0 0 0 #000000 !important;
+        background-color: #161b22 !important;
     }
 
-    /* Dark Mode Glass Cards */
-    [data-testid="stMetric"], .stExpander, .stForm {
-        background: rgba(22, 27, 34, 0.8) !important;
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(240, 246, 252, 0.1) !important;
-        border-radius: 16px !important;
+    /* 4. Glassmorphism for Containers */
+    [data-testid="stMetric"], .stForm, .stExpander {
+        background: rgba(22, 27, 34, 0.7) !important;
+        backdrop-filter: blur(10px);
+        border: 1px solid #30363d !important;
+        border-radius: 12px !important;
         box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
     }
 
-    /* Bed status cards */
-    .bed-card {
-        background-color: rgba(48, 54, 61, 0.4);
-        border: 1px solid rgba(240, 246, 252, 0.1);
-        border-radius: 12px;
-        padding: 12px;
-        text-align: center;
-        transition: all 0.3s ease;
-    }
-    .bed-card:hover {
-        transform: translateY(-5px) scale(1.02);
-        border-color: #ffffff;
-        background-color: rgba(48, 54, 61, 0.8);
+    /* Custom Metric Value Glow */
+    [data-testid="stMetricValue"] {
+        color: #58a6ff !important;
+        text-shadow: 0 0 10px rgba(88, 166, 255, 0.3);
     }
 </style>
 
-<div class="wave-container">
+<div class="wave-wrapper">
     <div class="wave"></div>
-    <div class="wave wave2"></div>
+    <div class="wave wave-back"></div>
 </div>
 """, unsafe_allow_html=True)
 
