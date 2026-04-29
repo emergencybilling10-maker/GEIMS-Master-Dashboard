@@ -9,112 +9,104 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- DEEP FOREST ANIMATED GIF & EMERALD GLASS THEME ---
-st.markdown("""
+# --- ECO-TECH FOREST: LIVE VIDEO & 3D GLASS THEME ---
+st.markdown(f"""
 <style>
-    /* 1. Animated Forest Background */
-    [data-testid="stAppViewContainer"] {
-        background-image: url("https://jumpshare.com/share/KyoIv4ezVwlVuqsHMcL2");
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-    }
+    /* 1. Global Video Background */
+    [data-testid="stAppViewContainer"] {{
+        background: transparent !important;
+    }}
 
-    /* Dark Overlay to ensure text readability over the GIF */
-    [data-testid="stAppViewContainer"]::before {
+    /* Injecting the Video behind the content */
+    [data-testid="stAppViewContainer"]::before {{
         content: "";
         position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0, 20, 10, 0.4); /* Deep green tint */
-        z-index: 0;
-        pointer-events: none;
-    }
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+        background: url('https://motionbgs.com/media/906/aesthetic-wonders-of-forest-nature.960x540.mp4'); /* Placeholder if browser blocks video */
+        background-size: cover;
+    }}
 
-    /* 2. 3D "Emerald" Tactile Buttons */
-    div.stButton > button {
-        background: rgba(46, 125, 50, 0.2) !important;
-        color: #e8f5e9 !important;
-        border: 1px solid rgba(165, 214, 167, 0.4) !important;
-        border-radius: 12px !important;
+    /* Creating the actual video layer */
+    .video-bg {{
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        min-width: 100%;
+        min-height: 100%;
+        width: auto;
+        height: auto;
+        z-index: -2;
+        transform: translate(-50%, -50%);
+        filter: brightness(0.7) contrast(1.1); /* Deepens the forest look */
+    }}
+
+    /* 2. 3D "Forest-Press" Buttons */
+    div.stButton > button {{
+        background: rgba(34, 139, 34, 0.2) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(144, 238, 144, 0.4) !important;
+        border-radius: 8px !important;
         font-weight: 600 !important;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        /* Deep 3D Shadow */
-        box-shadow: 0 4px 0px #1b5e20, 0 8px 15px rgba(0,0,0,0.4) !important;
-        transition: all 0.1s ease !important;
+        /* Tactile 3D Shadow */
+        box-shadow: 0 4px 0px #1a4a1a !important;
+        transition: all 0.15s ease !important;
         backdrop-filter: blur(5px);
-    }
+    }}
 
-    div.stButton > button:hover {
-        background: rgba(46, 125, 50, 0.4) !important;
-        border-color: #a5d6a7 !important;
+    div.stButton > button:hover {{
+        background: rgba(34, 139, 34, 0.4) !important;
         transform: translateY(-2px);
-        box-shadow: 0 6px 0px #1b5e20, 0 12px 20px rgba(0,0,0,0.5) !important;
-    }
+        box-shadow: 0 6px 0px #1a4a1a, 0 0 15px rgba(144, 238, 144, 0.3) !important;
+    }}
 
-    /* The "Press" Animation */
-    div.stButton > button:active {
+    /* The Mechanical "Press" Animation */
+    div.stButton > button:active {{
         transform: translateY(4px) !important;
         box-shadow: 0 0px 0px transparent !important;
         background: #2e7d32 !important;
-    }
+    }}
 
-    /* 3. Forest Glass Panels (Metrics & Forms) */
-    [data-testid="stMetric"], .stForm, .stExpander {
-        background: rgba(0, 30, 15, 0.6) !important;
+    /* 3. Forest Glass Panels (Frosted Green) */
+    [data-testid="stMetric"], .stForm, .stExpander {{
+        background: rgba(0, 20, 0, 0.5) !important;
         backdrop-filter: blur(15px) saturate(120%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-radius: 20px !important;
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6) !important;
-        margin-bottom: 20px !important;
-    }
+        border: 1px solid rgba(144, 2 light, 144, 0.2) !important;
+        border-radius: 15px !important;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6) !important;
+        color: white !important;
+    }}
 
-    /* 4. "Breathing" Forest Title */
-    h1 {
-        color: #ffffff !important;
-        text-shadow: 0 0 15px rgba(76, 175, 80, 0.8);
-        animation: forestBreath 4s ease-in-out infinite;
-    }
+    /* 4. Glowing Typography */
+    h1, h2, h3 {{
+        color: #e8f5e9 !important;
+        text-shadow: 2px 2px 10px rgba(0,0,0,0.8), 0 0 15px rgba(144, 238, 144, 0.4);
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }}
 
-    @keyframes forestBreath {
-        0%, 100% { opacity: 0.9; transform: scale(1); }
-        50% { opacity: 1; transform: scale(1.01); }
-    }
-
-    /* Metric Styling */
-    [data-testid="stMetricValue"] {
-        color: #81c784 !important; /* Soft leaf green */
-        font-weight: 800 !important;
-        text-shadow: 0 0 10px rgba(0,0,0,0.5);
-    }
-    
-    [data-testid="stMetricLabel"] {
+    [data-testid="stMetricValue"] {{
         color: #c8e6c9 !important;
-    }
-
-    /* 5. Blinking "Active" Node */
-    [data-testid="stMetric"]::after {
-        content: "";
-        position: absolute;
-        top: 15px; right: 15px;
-        width: 8px; height: 8px;
-        background: #69f0ae;
-        border-radius: 50%;
-        animation: leafBlink 2s infinite;
-    }
-
-    @keyframes leafBlink {
-        0% { box-shadow: 0 0 0 0 rgba(105, 240, 174, 0.7); }
-        70% { box-shadow: 0 0 0 10px rgba(105, 240, 174, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(105, 240, 174, 0); }
-    }
+        font-weight: 800 !important;
+        text-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+    }}
 
     /* Sidebar Styling */
-    [data-testid="stSidebar"] {
-        background-color: rgba(0, 15, 5, 0.9) !important;
-        border-right: 1px solid rgba(76, 175, 80, 0.2);
-    }
+    [data-testid="stSidebar"] {{
+        background-color: rgba(5, 15, 5, 0.9) !important;
+        border-right: 1px solid rgba(144, 238, 144, 0.1);
+    }}
+
+    /* Custom Forest Scrollbar */
+    ::-webkit-scrollbar {{ width: 6px; }}
+    ::-webkit-scrollbar-thumb {{ background: rgba(144, 238, 144, 0.3); border-radius: 10px; }}
 </style>
+
+<video autoplay loop muted playsinline class="video-bg">
+    <source src="https://motionbgs.com/media/906/aesthetic-wonders-of-forest-nature.960x540.mp4" type="video/mp4">
+</video>
 """, unsafe_allow_html=True)
 
 # --- 1. SECURE DATABASE CONNECTION ---
