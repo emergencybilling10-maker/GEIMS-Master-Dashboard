@@ -9,98 +9,112 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- DARK WATER WAVE & 3D THEME INJECTION ---
+# --- DARK MODE & ANIMATED WATER WAVE THEME ---
 st.markdown("""
 <style>
-    /* 1. Deep Dark Background */
+    /* Dark Mode Base */
     .stApp {
-        background-color: #000b1a;
+        background-color: #0b0d11;
         color: #e0e0e0;
         overflow: hidden;
     }
 
-    /* 2. Water Wave Animation */
-    .stApp::before, .stApp::after {
+    /* Animated Water Waves */
+    .stApp::before {
         content: "";
         position: fixed;
         bottom: 0;
         left: 0;
-        width: 200%;
-        height: 300px;
-        background: rgba(0, 150, 255, 0.15);
-        border-radius: 40%;
-        z-index: -1;
-        transform: translateX(-25%);
-    }
-
-    .stApp::before {
-        animation: wave 12s infinite linear;
-        background: rgba(0, 100, 255, 0.1);
+        width: 100%;
+        height: 15vh;
+        background: url('https://raw.githubusercontent.com/front-end-relative/assets/main/wave.png');
+        background-size: 1000px 100px;
+        opacity: 0.15;
+        animation: wave 10s linear infinite;
+        z-index: 0;
+        pointer-events: none;
     }
 
     .stApp::after {
-        animation: wave 18s infinite linear;
-        opacity: 0.5;
-        bottom: -20px;
+        content: "";
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 12vh;
+        background: url('https://raw.githubusercontent.com/front-end-relative/assets/main/wave.png');
+        background-size: 1000px 100px;
+        opacity: 0.1;
+        animation: wave-reverse 7s linear infinite;
+        z-index: 0;
+        pointer-events: none;
     }
 
     @keyframes wave {
-        from { transform: translateX(0) rotate(0deg); }
-        to { transform: translateX(-50%) rotate(360deg); }
+        0% { background-position-x: 0; }
+        100% { background-position-x: 1000px; }
+    }
+    @keyframes wave-reverse {
+        0% { background-position-x: 0; }
+        100% { background-position-x: -1000px; }
     }
 
-    /* 3. 3D Tactile Button Effect */
+    /* 3D Tactile Button Effect (Dark Mode) */
     div.stButton > button {
-        background: linear-gradient(145deg, #002d5a, #001a33);
-        color: #00d2ff;
-        border: 1px solid #0059b3;
-        padding: 10px 25px;
-        border-radius: 10px;
+        background-color: #1e2128;
+        color: #4da3ff;
+        border: 1px solid #3a3f4b;
+        padding: 10px 20px;
+        border-radius: 12px;
         font-weight: bold;
-        box-shadow: 0 5px 0 #000a1a; /* Thickness */
+        box-shadow: 0 4px #000;
         transition: all 0.1s ease;
-        text-transform: uppercase;
-        letter-spacing: 1px;
     }
 
     div.stButton > button:hover {
-        background: #003d7a;
-        color: #fff;
-        box-shadow: 0 5px 0 #000a1a;
-        transform: translateY(-2px);
+        background-color: #2a2e37;
+        box-shadow: 0 4px #000;
+        transform: translateY(-1px);
+        border-color: #4da3ff;
     }
 
-    /* The 3D Push-Down Effect */
     div.stButton > button:active {
-        box-shadow: 0 0px #000a1a;
-        transform: translateY(5px);
+        box-shadow: 0 0px #000;
+        transform: translateY(4px);
+        background-color: #121417;
     }
 
-    /* 4. Glassmorphism Containers */
+    /* Dark Glass Containers */
     [data-testid="stMetric"], .stExpander, .stForm {
-        background: rgba(255, 255, 255, 0.03) !important;
+        background: rgba(30, 33, 40, 0.7) !important;
         backdrop-filter: blur(15px);
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
         border-radius: 15px !important;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8) !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
     }
 
-    /* Headers */
-    h1, h2, h3 {
-        color: #00d2ff !important;
-        text-shadow: 0 0 10px rgba(0, 210, 255, 0.3);
+    /* Text & Header Glow */
+    h1 {
+        color: #ffffff;
+        text-shadow: 0 0 15px rgba(77, 163, 255, 0.4);
+    }
+    
+    .stMarkdown, p, span {
+        color: #e0e0e0 !important;
     }
 
-    /* Bed status box hover */
-    .bed-card {
-        background: rgba(255,255,255,0.05);
+    /* Bed status cards */
+    .bed-card-dark {
+        background-color: rgba(42, 46, 55, 0.8);
         border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 12px;
+        padding: 10px;
+        text-align: center;
         transition: transform 0.3s ease;
     }
-    .bed-card:hover {
-        transform: scale(1.05) translateZ(20px);
-        background: rgba(255,255,255,0.1);
-        border-color: #00d2ff;
+    .bed-card-dark:hover {
+        transform: scale(1.03);
+        border-color: #4da3ff;
     }
 </style>
 """, unsafe_allow_html=True)
