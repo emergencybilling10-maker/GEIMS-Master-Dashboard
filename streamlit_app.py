@@ -9,87 +9,85 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- FULL ECO-TECH FOREST THEME (REINFORCED) ---
+# --- FULL FOREST GIF THEME + 3D TACTILE INTERFACE ---
 st.markdown("""
 <style>
-    /* 1. FORCE TRANSPARENCY ON ALL STREAMLIT LAYERS */
-    [data-testid="stAppViewContainer"], 
-    [data-testid="stHeader"], 
-    [data-testid="stSidebar"],
-    .main {
-        background-color: transparent !important;
+    /* 1. GLOBAL BACKGROUND: THE MOVING FOREST GIF */
+    [data-testid="stAppViewContainer"] {
+        background-image: url("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdDd5b3UzbDg4czZvcDR3b2JqNHpybmpvMmxwcTN5OHhoNTcwbHpvbSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/vnd963U745GWn3xVfX/giphy.gif") !important;
+        background-size: cover !important;
+        background-position: center !important;
+        background-attachment: fixed !important;
     }
 
-    /* 2. THE BACKGROUND VIDEO (Z-INDEX FIX) */
-    #bg-video {
+    /* 2. OVERLAY TO DARKEN GIF FOR READABILITY */
+    [data-testid="stAppViewContainer"]::before {
+        content: "";
         position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        object-fit: cover;
-        z-index: -1000;
-        /* Increased brightness and contrast for better dark-mode visibility */
-        filter: brightness(0.7) contrast(1.1) saturate(1.2);
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.4); /* Darkens the forest slightly */
+        z-index: 0;
         pointer-events: none;
     }
 
-    /* 3. 3D TACTILE BUTTONS (PUMP-ACTION PUSH) */
+    /* 3. 3D PUSH BUTTONS (TACTILE FEEDBACK) */
     div.stButton > button {
         background: rgba(255, 255, 255, 0.1) !important;
         color: #ffffff !important;
         border: 1px solid rgba(255, 255, 255, 0.3) !important;
-        border-radius: 10px !important;
-        padding: 0.7rem 1.5rem !important;
+        border-radius: 12px !important;
+        padding: 0.6rem 1.5rem !important;
         font-weight: 700 !important;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        /* Mechanical 3D shadow: 6px depth */
-        box-shadow: 0 6px 0px #0b1d0b, 0 10px 20px rgba(0,0,0,0.5) !important;
-        transition: all 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-        backdrop-filter: blur(8px);
+        /* The 3D Shadow */
+        box-shadow: 0 5px 0px #0b2410, 0 8px 15px rgba(0,0,0,0.5) !important;
+        transition: all 0.1s ease !important;
+        backdrop-filter: blur(5px);
     }
 
     div.stButton > button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 0px #0b1d0b, 0 15px 25px rgba(0,0,0,0.6) !important;
-        border-color: #90ee90 !important;
+        box-shadow: 0 7px 0px #0b2410, 0 12px 20px rgba(0,0,0,0.6) !important;
     }
 
-    /* The "Mechanical Press" animation: Collapse shadow completely */
+    /* The "3D Press" Effect */
     div.stButton > button:active {
-        transform: translateY(6px) !important;
+        transform: translateY(5px) !important;
         box-shadow: 0 0px 0px transparent !important;
         background: rgba(144, 238, 144, 0.3) !important;
     }
 
-    /* 4. FROSTED FOREST GLASS (CARDS & FORMS) */
+    /* 4. FROSTED GLASS PANELS (CARDS & FORMS) */
     [data-testid="stMetric"], .stForm, .stExpander {
-        background: rgba(0, 20, 0, 0.65) !important;
-        backdrop-filter: blur(25px) saturate(160%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        background: rgba(0, 20, 0, 0.6) !important;
+        backdrop-filter: blur(15px) saturate(140%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
         border-radius: 20px !important;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8) !important;
-        margin-bottom: 25px !important;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7) !important;
+        z-index: 1;
     }
 
     /* 5. TYPOGRAPHY & GLOW */
-    h1 {
-        font-size: 3rem !important;
+    h1, h2, h3 {
         color: #ffffff !important;
-        text-shadow: 0 0 20px rgba(144, 238, 144, 0.6), 2px 2px 5px #000;
-        text-align: center;
+        text-shadow: 2px 2px 10px rgba(0,0,0,0.8);
+        font-family: 'Inter', sans-serif;
     }
 
     [data-testid="stMetricValue"] {
         color: #90ee90 !important;
-        text-shadow: 0 0 15px rgba(144, 238, 144, 0.4);
+        text-shadow: 0 0 15px rgba(144, 238, 144, 0.5);
     }
-</style>
 
-<video autoplay loop muted playsinline id="bg-video">
-    <source src="https://motionbgs.com/media/906/aesthetic-wonders-of-forest-nature.960x540.mp4" type="video/mp4">
-</video>
+    /* Sidebar Glass UI */
+    [data-testid="stSidebar"] {
+        background-color: rgba(5, 10, 5, 0.9) !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: rgba(144, 238, 144, 0.3); border-radius: 10px; }
+</style>
 """, unsafe_allow_html=True)
 
 # --- 1. SECURE DATABASE CONNECTION ---
