@@ -9,89 +9,106 @@ import pytz
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- HEARTBEAT / ECG THEME INJECTION ---
+# --- 3D HEARTBEAT / MONITOR THEME INJECTION ---
 st.markdown("""
     <style>
-    /* 1. Main Background: Deep Medical Monitor Green/Black */
+    /* 1. 3D Perspective Background */
     .stApp {
-        background-color: #050a05;
+        background-color: #010801;
         background-image: 
-            linear-gradient(rgba(0, 255, 65, 0.1) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 255, 65, 0.1) 1px, transparent 1px);
-        background-size: 30px 30px; /* Grid effect */
+            linear-gradient(rgba(0, 255, 65, 0.1) 2px, transparent 2px),
+            linear-gradient(90deg, rgba(0, 255, 65, 0.1) 2px, transparent 2px);
+        background-size: 50px 50px;
+        /* This creates the 3D floor effect */
+        perspective: 1000px;
         color: #00ff41;
+        overflow-x: hidden;
     }
 
-    /* 2. The "Heartbeat" Scanning Line */
+    /* 2. Floating 3D Cards Effect */
+    [data-testid="stMetric"], .stForm, .stExpander, .stDownloadButton, div[role="button"] {
+        background: rgba(0, 30, 0, 0.7) !important;
+        border: 1px solid rgba(0, 255, 65, 0.4) !important;
+        border-radius: 15px !important;
+        backdrop-filter: blur(8px);
+        
+        /* 3D Shadows & Hover */
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 10px rgba(0, 255, 65, 0.1);
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease !important;
+        transform: translateZ(0);
+    }
+
+    /* Hover effect to make cards "Pop Out" */
+    [data-testid="stMetric"]:hover, .stForm:hover, .stExpander:hover {
+        transform: translateY(-10px) scale(1.02) rotateX(2deg);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8), 0 0 25px rgba(0, 255, 65, 0.3);
+        border-color: #00ff41 !important;
+    }
+
+    /* 3. The 3D Heartbeat Line (Scrolling Depth) */
     .stApp::before {
         content: "";
         position: fixed;
         top: 0;
-        left: -100%;
+        left: 0;
         width: 100%;
         height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(0, 255, 65, 0.2), transparent);
-        animation: scan 4s linear infinite;
-        z-index: 0;
+        background: repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0, 255, 65, 0.03) 1px, rgba(0, 255, 65, 0.03) 2px);
         pointer-events: none;
+        z-index: 1;
     }
 
-    @keyframes scan {
-        0% { left: -100%; }
-        100% { left: 100%; }
-    }
-
-    /* 3. Pulsing Headers (The Heartbeat) */
-    h1, h2, h3 {
+    /* 4. 3D Glowing Text */
+    h1 {
+        text-transform: uppercase;
+        font-weight: 900;
+        letter-spacing: 5px;
         color: #00ff41 !important;
-        font-family: 'Courier New', Courier, monospace;
-        text-shadow: 0 0 5px #00ff41;
-        animation: pulse 1.5s ease-in-out infinite;
+        text-shadow: 2px 2px 0px #003300, 4px 4px 0px #001100, 0 0 20px rgba(0, 255, 65, 0.5);
+        transform: skew(-5deg);
     }
 
-    @keyframes pulse {
-        0% { opacity: 1; transform: scale(1); }
-        10% { opacity: 0.8; transform: scale(1.01); }
-        20% { opacity: 1; transform: scale(1); }
-        100% { opacity: 1; transform: scale(1); }
-    }
-
-    /* 4. Glowing Metric Cards */
-    [data-testid="stMetric"] {
-        background: rgba(0, 40, 0, 0.6);
-        border: 1px solid #00ff41;
-        border-radius: 10px;
-        padding: 15px;
-        box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
-    }
-
-    /* 5. Buttons with "Vitals" style */
-    .stButton>button {
-        background: transparent;
-        border: 2px solid #00ff41;
-        color: #00ff41;
-        border-radius: 20px;
-        font-weight: bold;
-        transition: 0.3s;
+    /* 5. Vitals Pulse Animation */
+    @keyframes heartbeat3D {
+        0% { transform: scale(1); filter: brightness(1); }
+        10% { transform: scale(1.02); filter: brightness(1.3); }
+        20% { transform: scale(1); filter: brightness(1); }
+        100% { transform: scale(1); filter: brightness(1); }
     }
     
-    .stButton>button:hover {
-        background: #00ff41;
-        color: #000;
-        box-shadow: 0 0 20px #00ff41;
+    [data-testid="stMetricValue"] {
+        animation: heartbeat3D 2s infinite;
+        display: inline-block;
+        color: #00ff41 !important;
     }
 
-    /* 6. Form/Expander Transparency */
-    .stExpander, .stForm {
-        background: rgba(0, 20, 0, 0.8) !important;
-        border: 1px solid #00ff41 !important;
+    /* 6. 3D Buttons */
+    .stButton>button {
+        background: linear-gradient(145deg, #002200, #004400);
+        border: 1px solid #00ff41;
+        color: #00ff41;
+        border-radius: 10px;
+        box-shadow: 4px 4px 0px #003300;
+        transition: all 0.2s ease;
     }
 
-    /* Sidebar Tweaks */
+    .stButton>button:active {
+        box-shadow: 0px 0px 0px #003300;
+        transform: translate(2px, 2px);
+    }
+
+    /* Sidebar 3D Offset */
     [data-testid="stSidebar"] {
-        background-color: #020502;
+        background-color: #000a00;
         border-right: 2px solid #00ff41;
+        box-shadow: 10px 0 30px rgba(0,0,0,0.5);
     }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #010801; }
+    ::-webkit-scrollbar-thumb { background: #004400; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #00ff41; }
     </style>
     """, unsafe_allow_html=True)
 
