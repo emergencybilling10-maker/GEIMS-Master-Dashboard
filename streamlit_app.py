@@ -282,10 +282,20 @@ with c_col5:
 
 # --- 7. SIDEBAR: FUTURE BOOKING & ADMIN ---
 show_dashboard = False 
+
+# First, we check the Admin Panel at the top or bottom to set the state
+# To make it work smoothly, let's capture the password status first
 with st.sidebar:
+    st.header("🛡️ Admin Panel")
+    admin_pw = st.text_input("Admin Password", type="password", key="sidebar_admin_pw")
+    if admin_pw == "GeimsAdmin99":
+        show_dashboard = True
+        st.success("Admin Access Granted")
+    
+    st.divider()
     st.header("📅 Future Booking Control")
     
-    # --- ADDING NEW BOOKINGS ---
+    # --- ADDING NEW BOOKINGS (Anyone can add) ---
     with st.expander("📝 ADD FUTURE BOOKING"):
         with st.form("future_form", clear_on_submit=True):
             f_name = st.text_input("Patient Name")
@@ -325,21 +335,18 @@ with st.sidebar:
                 st.write(f"**UHID:** {b['uhid']}")
                 st.write(f"**Doctor:** {b['dr']}")
                 st.write(f"**Pref:** {b['preference']} | **Bed:** {b['pref_bed']}")
-                # Option to clear booking
+                
+                # --- ADMIN-ONLY CANCELLATION LOGIC ---
                 if st.button(f"Cancel {b['uhid']}", key=f"del_{doc.id}"):
-                    db.collection("future_bookings").document(doc.id).delete()
-                    if 'cached_book_list' in st.session_state: del st.session_state['cached_book_list']
-                    st.rerun()
+                    if show_dashboard: # Check if admin password was correct
+                        db.collection("future_bookings").document(doc.id).delete()
+                        if 'cached_book_list' in st.session_state: del st.session_state['cached_book_list']
+                        st.toast(f"Booking for {b['uhid']} Deleted", icon="🗑️")
+                        st.rerun()
+                    else:
+                        st.error("❌ Admin Password Required to Cancel!")
     else:
         st.info("No future bookings scheduled.")
-
-    st.divider()
-    
-    # --- ADMIN PANEL ---
-    st.header("🛡️ Admin Panel")
-    if st.text_input("Admin Password", type="password") == "GeimsAdmin99":
-        show_dashboard = True
-        st.success("Admin Access Granted")
         
         # 📋 REPORTS
         st.subheader("📋 Reports")
