@@ -29,6 +29,71 @@ st.markdown("""
         top: 0;
         left: -100%;
         width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(0, 255, 65, 0.2), transparent);
+        animation: scan 4s linear infinite;
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    @keyframes scan {
+        0% { left: -100%; }
+        100% { left: 100%; }
+    }
+
+    /* 3. Pulsing Headers (The Heartbeat) */
+    h1, h2, h3 {
+        color: #00ff41 !important;
+        font-family: 'Courier New', Courier, monospace;
+        text-shadow: 0 0 5px #00ff41;
+        animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+        0% { opacity: 1; transform: scale(1); }
+        10% { opacity: 0.8; transform: scale(1.01); }
+        20% { opacity: 1; transform: scale(1); }
+        100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* 4. Glowing Metric Cards */
+    [data-testid="stMetric"] {
+        background: rgba(0, 40, 0, 0.6);
+        border: 1px solid #00ff41;
+        border-radius: 10px;
+        padding: 15px;
+        box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+    }
+
+    /* 5. Buttons with "Vitals" style */
+    .stButton>button {
+        background: transparent;
+        border: 2px solid #00ff41;
+        color: #00ff41;
+        border-radius: 20px;
+        font-weight: bold;
+        transition: 0.3s;
+    }
+    
+    .stButton>button:hover {
+        background: #00ff41;
+        color: #000;
+        box-shadow: 0 0 20px #00ff41;
+    }
+
+    /* 6. Form/Expander Transparency */
+    .stExpander, .stForm {
+        background: rgba(0, 20, 0, 0.8) !important;
+        border: 1px solid #00ff41 !important;
+    }
+
+    /* Sidebar Tweaks */
+    [data-testid="stSidebar"] {
+        background-color: #020502;
+        border-right: 2px solid #00ff41;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # --- 1. SECURE DATABASE CONNECTION ---
 @st.cache_resource
