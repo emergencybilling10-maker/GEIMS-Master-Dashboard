@@ -14,7 +14,7 @@ st.markdown("""
 <style>
     /* 1. THE MOVING BACKGROUND: SHARP & VIVID */
     [data-testid="stAppViewContainer"] {
-        background-image: url("https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExZGg0YmJseHVyYTh5bHdiY2Q5bDh3YXJjMGw1bm80Nnk1YW8xN2szZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/26BRGoqbUQvk8nwTC/giphy.gif") !important;
+        background-image: url("https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExNXpvYWpqM2ZpejNyZzJ6NXdqN3kzcXVhMjIwMnRqbGdxeXJhdDE2MSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/KX5nwoDX97AtPvKBF6/giphy.gif") !important;
         background-size: cover !important;
         background-position: center !important;
         background-attachment: fixed !important;
