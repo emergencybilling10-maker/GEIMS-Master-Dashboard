@@ -12,12 +12,15 @@ st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 # --- QUANTUM FLUID + ULTRA-GLASS 3D INTERFACE ---
 st.markdown("""
 <style>
+    /* 1. THE MOVING BACKGROUND: SHARP & VIVID */
     [data-testid="stAppViewContainer"] {
         background-image: url("https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExeTNqazRwZDFlMjcwaTl6OHlvY21ucGd3YWoxaWYycjVsaG1jeGhmbyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/U4ExkAvRpVQGB0NMe0/giphy.gif") !important;
         background-size: cover !important;
         background-position: center !important;
         background-attachment: fixed !important;
     }
+
+    /* 2. BALANCED BRIGHTNESS OVERLAY */
     [data-testid="stAppViewContainer"]::before {
         content: "";
         position: fixed;
@@ -26,6 +29,8 @@ st.markdown("""
         z-index: 0;
         pointer-events: none;
     }
+
+    /* 3. PREMIUM 3D TACTILE GLASS BUTTONS */
     div.stButton > button {
         background: rgba(255, 255, 255, 0.12) !important;
         color: #ffffff !important;
@@ -36,13 +41,68 @@ st.markdown("""
         text-transform: uppercase;
         letter-spacing: 1.5px;
         box-shadow: 0 5px 0px rgba(0,0,0,0.5), 0 8px 20px rgba(0, 229, 255, 0.2) !important;
+        transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
         backdrop-filter: blur(12px);
     }
-    h1 { color: #ffffff !important; text-shadow: 0 4px 15px rgba(0,0,0,0.7); text-align: center; }
+
+    div.stButton > button:hover {
+        background: rgba(255, 255, 255, 0.22) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 7px 0px rgba(0,0,0,0.5), 0 15px 25px rgba(0, 229, 255, 0.4) !important;
+    }
+
+    /* 3D "Mechanical Click" */
+    div.stButton > button:active {
+        transform: translateY(5px) !important;
+        box-shadow: 0 0px 0px transparent !important;
+        background: rgba(0, 229, 255, 0.2) !important;
+        color: #00e5ff !important;
+    }
+
+    /* 4. ULTRA-TRANSPARENT CRYSTAL PANELS (Glassmorphism) */
+    [data-testid="stMetric"], .stForm, .stExpander {
+        background: rgba(255, 255, 255, 0.06) !important; 
+        backdrop-filter: blur(28px) saturate(180%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.25) !important;
+        border-radius: 22px !important;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6) !important;
+        z-index: 1;
+        margin-bottom: 25px !important;
+    }
+
+    /* 5. TYPOGRAPHY: SHARP & READABLE */
+    h1 {
+        font-weight: 900 !important;
+        color: #ffffff !important;
+        text-shadow: 0 4px 15px rgba(0,0,0,0.7);
+        text-align: center;
+        letter-spacing: 2px;
+    }
+
+    [data-testid="stMetricValue"] {
+        color: #ffffff !important;
+        text-shadow: 0 0 20px rgba(0, 229, 255, 0.6);
+        font-weight: 800 !important;
+    }
+    
+    [data-testid="stMetricLabel"] {
+        color: rgba(255, 255, 255, 0.85) !important;
+        font-weight: 600 !important;
+        text-transform: uppercase;
+        font-size: 0.85rem !important;
+    }
+
+    /* Sidebar Glass UI */
     [data-testid="stSidebar"] {
         background-color: rgba(0, 5, 15, 0.85) !important;
         backdrop-filter: blur(24px);
+        border-right: 1px solid rgba(255, 255, 255, 0.15);
     }
+
+    /* Professional Scrollbar */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.25); border-radius: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -70,33 +130,32 @@ bed_structure = {
 }
 all_bed_ids = [b for w in bed_structure.values() for b in w]
 
-# --- 3. DATA FETCH & SORTING ---
-# Fixed Timezone and strict sorting
+# --- 3. FAILSAFE DATA FETCH (IST Timezone Standardized) ---
 ist_tz = pytz.timezone('Asia/Kolkata')
 today_ist = datetime.now(ist_tz)
 today_date_str = today_ist.strftime('%d/%m/%Y')
 
 if db:
     if 'cached_live_data' not in st.session_state or 'cached_req_list' not in st.session_state:
-        # 1. Fetch beds
+        status_doc = db.collection("settings").document("dashboard_status").get()
+        st.session_state.is_live = status_doc.to_dict().get("status", "LIVE") if status_doc.exists else "LIVE"
         docs = db.collection("beds").stream()
         st.session_state.cached_live_data = {doc.id: doc.to_dict() for doc in docs}
         
-        # 2. Fetch requests (unlimited to get all)
-        reqs_stream = db.collection("bed_requests").stream()
+        reqs_stream = db.collection("bed_requests").limit(100).stream()
         raw_reqs = []
         for r in reqs_stream:
             data = r.to_dict()
             ts = data.get('timestamp')
-            # Critical: Localize timestamp to IST if it comes as naive
-            if ts and ts.tzinfo is None: ts = ist_tz.localize(ts)
-            data['timestamp'] = ts
+            if ts:
+                # Force aware datetime translation
+                if hasattr(ts, 'tzinfo') and ts.tzinfo is None:
+                    ts = pytz.utc.localize(ts)
+                data['timestamp'] = ts
             raw_reqs.append(data | {'ID': r.id})
             
-        # Critical Fix: Sort by raw timestamp primarily
         st.session_state.cached_req_list = sorted(raw_reqs, key=lambda x: (x.get('position', 999), x.get('timestamp', today_ist)))
         
-        # 3. Fetch future bookings
         book_stream = db.collection("future_bookings").order_by("book_date", direction=firestore.Query.ASCENDING).stream()
         st.session_state.cached_book_list = [b.to_dict() | {'ID': b.id} for b in book_stream]
 
@@ -111,12 +170,11 @@ st.markdown("<h1 style='text-align: center; margin-bottom: 0;'>Bed Management Da
 st.markdown(f"<p style='text-align: center;'><b>Current Date: {today_date_str}</b></p>", unsafe_allow_html=True)
 
 if st.button("🔄 Refresh Dashboard Data"):
-    for key in ['cached_live_data', 'cached_req_list', 'cached_book_list']:
+    for key in ['cached_live_data', 'is_live', 'cached_req_list', 'cached_book_list']:
         if key in st.session_state: del st.session_state[key]
     st.rerun()
 
 # --- 5. ALERTS ---
-# Fixed alert timestamp logic
 today_iso = today_ist.strftime('%Y-%m-%d')
 alerts = [b for b in book_list if b.get('book_date') == today_iso]
 for a in alerts:
@@ -124,7 +182,7 @@ for a in alerts:
         st.markdown(f"<div style='background-color: #FFEBEE; border: 2px solid #FF5252; padding: 15px; border-radius: 5px; margin-bottom: 5px;'><b>🚨 TODAY'S BOOKING: {a.get('name', 'N/A')}</b></div>", unsafe_allow_html=True)
         if st.button(f"✅ Admit: {a.get('name')}", key=f"ack_{a['ID']}"):
             db.collection("bed_requests").add({
-                "timestamp": datetime.now(ist_tz), # Direct IST time
+                "timestamp": datetime.now(ist_tz), # Store accurate IST
                 "name": a.get('name'), "category": a.get('category', 'OTHER'),
                 "dr_name": a.get('dr'), "shift_from": "BOOKING", "shift_to": a.get('preference', 'PVT'), 
                 "remark": f"Reserved: {a.get('pref_bed','-')}", "bed_no": "", "status": "WAITING", 
@@ -136,7 +194,6 @@ for a in alerts:
             st.rerun()
 
 # --- 6. MANAGE PATIENT REQUESTS ---
-# Fixed duplicate check and raw timestamp usage
 with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
     pending = sum(1 for r in req_list if r.get('status') == "WAITING" and not r.get('bed_no'))
     allotted = sum(1 for r in req_list if r.get('status') == "DONE")
@@ -157,23 +214,25 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         if st.form_submit_button("Submit Request"):
             if p_name:
                 p_name_clean = p_name.strip().lower()
-                
-                # Rigid Duplicate Check (same patient, from/to ward, status waiting)
+                p_dr_clean = dr_name.strip().lower()
                 is_duplicate = False
+                
+                # Rigid duplicate checking
                 for r in req_list:
                     if (r.get('name', '').strip().lower() == p_name_clean and 
+                        r.get('category') == p_cat and 
+                        r.get('dr_name', '').strip().lower() == p_dr_clean and 
                         r.get('shift_from') == p_fr and 
-                        r.get('shift_to') == p_to and
+                        r.get('shift_to') == p_to and 
                         r.get('status') == "WAITING"):
                         is_duplicate = True
                         break
                         
                 if is_duplicate:
-                    st.warning(f"⚠️ Duplicate Check Blocked: {p_name} is already WAITING to shift from {p_fr} to {p_to}.")
+                    st.warning("⚠️ Duplicate Entry: An identical shifting request already exists in the list.")
                 else:
-                    # direct use of IST time, no normalization
                     db.collection("bed_requests").add({
-                        "timestamp": datetime.now(ist_tz), 
+                        "timestamp": datetime.now(ist_tz), # Store accurate local IST
                         "name": p_name, "category": p_cat,
                         "dr_name": dr_name, "shift_from": p_fr, "shift_to": p_to, 
                         "remark": rem, "bed_no": "", "status": "WAITING", "date": today_date_str, "position": 999
@@ -187,10 +246,10 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         h_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1, 1.5])
         headers = ["S.N", "NAME", "CAT", "DR", "FROM", "TO", "REMARK", "BED", "STATUS", "ACTION"]
         for col, h in zip(h_cols, headers): col.write(f"**{h}**")
+        
         for idx, r in enumerate(req_list):
             if sq and sq not in r.get('name', '').lower(): continue
             
-            # Status Logic
             current_status = r.get('status', 'WAITING')
             b_no = r.get('bed_no', '')
             if b_no and current_status == "WAITING": current_status = "DONE"
@@ -202,17 +261,24 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             color_map = {"DONE": "green", "CANCELLED": "red", "GEN-WARD ALLOTTED": "blue", "HOLD": "purple"}
             color = color_map.get(current_status, "orange")
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{current_status}</span>", unsafe_allow_html=True)
+            
             if current_status == "DONE":
                 slip = f"""====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r['name']}\n------------------------------------\nBED:  {b_no}\n===================================="""
                 r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
                 
-            # --- DATE/TIME STAMP SECTION IN A SEPARATE SUB-ROW ---
-            # Fixed timestamp display logic
             ts = r.get('timestamp')
-            ts_str = ts.strftime('%d/%m/%Y %I:%M:%S %p') if isinstance(ts, datetime) else "-"
+            # Localize and convert timestamp to IST explicitly
+            if ts:
+                if ts.tzinfo is None:
+                    ts = pytz.utc.localize(ts)
+                ts_ist = ts.astimezone(ist_tz)
+                ts_str = ts_ist.strftime('%d/%m/%Y %I:%M:%S %p')
+            else:
+                ts_str = "-"
+                
             st.markdown(f"<div style='font-size: 11px; color: rgba(255,255,255,0.7); margin-left: 35px; margin-top: -12px; margin-bottom: 12px;'>🕒 Entry Timestamp (IST): <b>{ts_str}</b></div>", unsafe_allow_html=True)
 
-# --- NEW: PDF CONSENT FORM PANEL ---
+# --- PDF CONSENT FORM PANEL ---
 st.subheader("📝 ADMISSION & SHIFTING CONSENT FORMS (PDF)")
 
 def get_pdf_data(file_name):
@@ -223,46 +289,16 @@ def get_pdf_data(file_name):
         return None
 
 c_col1, c_col2, c_col3, c_col4, c_col5 = st.columns(5)
-
-# 1. SELF PAY
-pdf_self = get_pdf_data("consent_self_pay.pdf")
 with c_col1:
-    if pdf_self:
-        st.download_button("💳 1 - SELF PAY", pdf_self, file_name="Consent_SelfPay.pdf", mime="application/pdf")
-    else:
-        st.error("Self Pay PDF Missing")
-
-# 2. CGHS CASH
-pdf_cghs_cash = get_pdf_data("consent_cghs_cash.pdf")
+    st.download_button("💳 1 - SELF PAY", get_pdf_data("consent_self_pay.pdf") or b"", file_name="Consent_SelfPay.pdf", mime="application/pdf")
 with c_col2:
-    if pdf_cghs_cash:
-        st.download_button("💰 2 - CGHS CASH", pdf_cghs_cash, file_name="Consent_CGHS_Cash.pdf", mime="application/pdf")
-    else:
-        st.error("CGHS Cash PDF Missing")
-
-# 3. ECHS
-pdf_echs = get_pdf_data("consent_echs.pdf")
+    st.download_button("💰 2 - CGHS CASH", get_pdf_data("consent_cghs_cash.pdf") or b"", file_name="Consent_CGHS_Cash.pdf", mime="application/pdf")
 with c_col3:
-    if pdf_echs:
-        st.download_button("🎖️ 3 - ECHS", pdf_echs, file_name="Consent_ECHS.pdf", mime="application/pdf")
-    else:
-        st.error("ECHS PDF Missing")
-
-# 4. CGHS CREDIT & PSU
-pdf_cghs_credit = get_pdf_data("consent_cghs_credit.pdf")
+    st.download_button("🎖️ 3 - ECHS", get_pdf_data("consent_echs.pdf") or b"", file_name="Consent_ECHS.pdf", mime="application/pdf")
 with c_col4:
-    if pdf_cghs_credit:
-        st.download_button("🏥 4 - CGHS CREDIT/PSU", pdf_cghs_credit, file_name="Consent_CGHS_Credit.pdf", mime="application/pdf")
-    else:
-        st.error("Credit PDF Missing")
-
-# 5. TPA
-pdf_tpa = get_pdf_data("consent_tpa.pdf")
+    st.download_button("🏥 4 - CGHS CREDIT/PSU", get_pdf_data("consent_cghs_credit.pdf") or b"", file_name="Consent_CGHS_Credit.pdf", mime="application/pdf")
 with c_col5:
-    if pdf_tpa:
-        st.download_button("🏢 5 - TPA", pdf_tpa, file_name="Consent_TPA.pdf", mime="application/pdf")
-    else:
-        st.error("TPA PDF Missing")
+    st.download_button("🏢 5 - TPA", get_pdf_data("consent_tpa.pdf") or b"", file_name="Consent_TPA.pdf", mime="application/pdf")
 
 # --- 7. SIDEBAR ---
 show_dashboard = False 
@@ -281,7 +317,6 @@ with st.sidebar:
     if st.text_input("Admin Password", type="password") == "GeimsAdmin99":
         show_dashboard = True 
         
-        # 📋 REPORTS
         st.subheader("📋 Reports")
         if st.button("Download Handover Summary"):
             done = [r for r in req_list if r.get('bed_no')]
@@ -289,7 +324,6 @@ with st.sidebar:
             for r in done: rep += f"- {r['name']} -> Bed: {r['bed_no']}\n"
             st.download_button("📥 Get Report", data=rep, file_name=f"Handover_{today_date_str}.txt")
 
-        # ↕️ MANUAL LIST SWITCHER
         st.divider(); st.subheader("↕️ Switch Positions")
         if len(req_list) >= 2:
             p1_name = st.selectbox("Move Patient", [r['name'] for r in req_list], key="reorder_p1")
@@ -301,7 +335,6 @@ with st.sidebar:
                 if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                 st.rerun()
 
-        # 🛠️ PATIENT MODIFICATION HUB
         st.divider(); st.subheader("🛠️ Patient Modification Hub")
         if req_list:
             p_map = {f"{r['name']} ({r.get('bed_no', 'No Bed')})": r['ID'] for r in req_list}
@@ -313,15 +346,11 @@ with st.sidebar:
                 old_bed = target_data.get('bed_no')
                 if old_bed and old_bed in all_bed_ids: db.collection("beds").document(old_bed).set({"status": "VACANT", "patient": ""})
                 if new_bed and new_bed in all_bed_ids and new_status == "DONE": db.collection("beds").document(new_bed).set({"status": "ALLOTTED", "patient": target_data['name']})
-                
-                # Direct force update to request, keeping raw timestamp
                 db.collection("bed_requests").document(target_id).update({"status": new_status, "bed_no": new_bed})
-                
                 for k in ['cached_req_list', 'cached_live_data']: 
                     if k in st.session_state: del st.session_state[k]
                 st.rerun()
 
-        # 🔑 ALLOTMENT TOOLS
         st.divider(); st.subheader("🔑 Allotment Tools")
         wait = [r for r in req_list if not r.get('bed_no') and r.get('status') == "WAITING"]
         if wait:
@@ -334,7 +363,6 @@ with st.sidebar:
                 if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                 st.rerun()
 
-        # 📝 ENTRY MODIFICATION (Remark/Cancel)
         st.divider(); st.subheader("📝 Entry Modification")
         if req_list:
             target = st.selectbox("Select Patient to Edit", [r['name'] for r in req_list], key="sb_mod")
@@ -348,7 +376,6 @@ with st.sidebar:
                 if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                 st.rerun()
 
-        # ⚙️ MANUAL BED UPDATE
         st.divider(); st.subheader("⚙️ Manual Bed Update")
         m_bed = st.selectbox("Select Bed", all_bed_ids); m_stat = st.selectbox("Status", ["VACANT", "BOOKED", "ALLOTTED", "DISCHARGE", "MAINTENANCE", "RESTRICTED"]); m_name = st.text_input("Name Override")
         if st.button("Apply Bed Update"):
@@ -356,7 +383,6 @@ with st.sidebar:
             if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
             st.rerun()
 
-        # ⚠️ DATA RESET
         st.divider(); st.error("⚠️ DATA RESET")
         if st.button("RESET ALL BEDS"):
             for b in all_bed_ids: db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
