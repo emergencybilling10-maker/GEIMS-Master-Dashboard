@@ -25,7 +25,6 @@ st.markdown("""
         content: "";
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
-        /* Dark blue/black tint to allow high brightness but maintain text contrast */
         background: rgba(5, 10, 20, 0.55); 
         z-index: 0;
         pointer-events: none;
@@ -41,7 +40,6 @@ st.markdown("""
         font-weight: 700 !important;
         text-transform: uppercase;
         letter-spacing: 1.5px;
-        /* Professional 3D Shadow with depth */
         box-shadow: 0 5px 0px rgba(0,0,0,0.5), 0 8px 20px rgba(0, 229, 255, 0.2) !important;
         transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
         backdrop-filter: blur(12px);
@@ -94,14 +92,12 @@ st.markdown("""
         font-size: 0.85rem !important;
     }
 
-    /* Sidebar Glass UI (Matching the main dashboard) */
     [data-testid="stSidebar"] {
         background-color: rgba(0, 5, 15, 0.85) !important;
         backdrop-filter: blur(24px);
         border-right: 1px solid rgba(255, 255, 255, 0.15);
     }
 
-    /* Professional Scrollbar */
     ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.25); border-radius: 10px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -200,15 +196,29 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         p_fr = c2.selectbox("SHIFT FROM", ["CCU", "EMERGENCY", "DELUXE", "PVT", "SEMI PVT", "HDU", "OPD", "ICU", "WARD", "LR", "OTHER"])
         p_to = c2.selectbox("SHIFTING TO", ["DELUXE", "PRIVATE", "SEMI-PRIVATE", "GEN-WARD"])
         rem = c2.text_input("REMARK")
+        
         if st.form_submit_button("Submit Request"):
             if p_name:
-                db.collection("bed_requests").add({
-                    "timestamp": datetime.now(tz), "name": p_name, "category": p_cat,
-                    "dr_name": dr_name, "shift_from": p_fr, "shift_to": p_to, 
-                    "remark": rem, "bed_no": "", "status": "WAITING", "date": today_date_str, "position": 999
-                })
-                if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
-                st.rerun()
+                is_duplicate = False
+                for r in req_list:
+                    if (r.get('name', '').lower().strip() == p_name.lower().strip() and
+                        r.get('category') == p_cat and
+                        r.get('dr_name') == dr_name and
+                        r.get('shift_from') == p_fr and
+                        r.get('shift_to') == p_to):
+                        is_duplicate = True
+                        break
+                
+                if is_duplicate:
+                    st.warning("🚨 Duplicate Entry: An identical shifting request entry already exists!")
+                else:
+                    db.collection("bed_requests").add({
+                        "timestamp": datetime.now(tz), "name": p_name, "category": p_cat,
+                        "dr_name": dr_name, "shift_from": p_fr, "shift_to": p_to, 
+                        "remark": rem, "bed_no": "", "status": "WAITING", "date": today_date_str, "position": 999
+                    })
+                    if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
+                    st.rerun()
 
     if req_list:
         st.divider()
@@ -223,10 +233,21 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             b_no = r.get('bed_no', '')
             if b_no and current_status == "WAITING": current_status = "DONE"
             
+            # Format time-stamp from record
+            r_rem = r.get('remark', '')
+            r_time = ""
+            if 'timestamp' in r:
+                ts = r['timestamp']
+                if isinstance(ts, datetime):
+                    r_time = ts.astimezone(tz).strftime('%I:%M %p')
+                else:
+                    r_time = str(ts)
+            display_remark = f"[{r_time}] {r_rem}" if r_time else r_rem
+            
             r_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1, 1.5])
             r_cols[0].write(idx + 1); r_cols[1].write(r.get('name', '-')); r_cols[2].write(r.get('category', '-'))
             r_cols[3].write(r.get('dr_name', '-')); r_cols[4].write(r.get('shift_from', '-')); r_cols[5].write(r.get('shift_to', '-'))
-            r_cols[6].write(r.get('remark', '-')); r_cols[7].write(b_no if b_no else "-")
+            r_cols[6].write(display_remark if display_remark else "-"); r_cols[7].write(b_no if b_no else "-")
             color_map = {"DONE": "green", "CANCELLED": "red", "GEN-WARD ALLOTTED": "blue", "HOLD": "purple"}
             color = color_map.get(current_status, "orange")
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{current_status}</span>", unsafe_allow_html=True)
@@ -237,7 +258,6 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
 # --- NEW: PDF CONSENT FORM PANEL ---
 st.subheader("📝 ADMISSION & SHIFTING CONSENT FORMS (PDF)")
 
-# Function to safely read PDF files from your GitHub folder
 def get_pdf_data(file_name):
     try:
         with open(file_name, "rb") as f:
@@ -246,8 +266,6 @@ def get_pdf_data(file_name):
         return None
 
 c_col1, c_col2, c_col3, c_col4, c_col5 = st.columns(5)
-
-# 1. SELF PAY
 pdf_self = get_pdf_data("consent_self_pay.pdf")
 with c_col1:
     if pdf_self:
@@ -255,7 +273,6 @@ with c_col1:
     else:
         st.error("Self Pay PDF Missing")
 
-# 2. CGHS CASH
 pdf_cghs_cash = get_pdf_data("consent_cghs_cash.pdf")
 with c_col2:
     if pdf_cghs_cash:
@@ -263,7 +280,6 @@ with c_col2:
     else:
         st.error("CGHS Cash PDF Missing")
 
-# 3. ECHS
 pdf_echs = get_pdf_data("consent_echs.pdf")
 with c_col3:
     if pdf_echs:
@@ -271,7 +287,6 @@ with c_col3:
     else:
         st.error("ECHS PDF Missing")
 
-# 4. CGHS CREDIT & PSU
 pdf_cghs_credit = get_pdf_data("consent_cghs_credit.pdf")
 with c_col4:
     if pdf_cghs_credit:
@@ -279,7 +294,6 @@ with c_col4:
     else:
         st.error("Credit PDF Missing")
 
-# 5. TPA
 pdf_tpa = get_pdf_data("consent_tpa.pdf")
 with c_col5:
     if pdf_tpa:
