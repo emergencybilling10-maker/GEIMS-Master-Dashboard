@@ -312,11 +312,42 @@ with st.sidebar:
         show_dashboard = True
         
         st.subheader("📋 Reports")
-        if st.button("Download Handover Summary"):
-            done = [r for r in req_list if r.get('bed_no')]
-            rep = f"GEIMS SHIFT REPORT - {today_date_str}\n\n"
-            for r in done: rep += f"- {r['name']} -> Bed: {r['bed_no']}\n"
-            st.download_button("📥 Get Report", data=rep, file_name=f"Handover_{today_date_str}.txt")
+        
+        report_data = []
+        for idx, r in enumerate(req_list):
+            ts = r.get('timestamp')
+            if ts:
+                if ts.tzinfo is None:
+                    ts = pytz.utc.localize(ts)
+                ts_ist = ts.astimezone(ist_tz)
+                ts_str = ts_ist.strftime('%d/%m/%Y %I:%M:%S %p')
+            else:
+                ts_str = "-"
+                
+            report_data.append({
+                "S.N": idx + 1,
+                "NAME": r.get('name', '-'),
+                "Date & time stamp": ts_str,
+                "CAT": r.get('category', '-'),
+                "DR": r.get('dr_name', '-'),
+                "FROM": r.get('shift_from', '-'),
+                "TO": r.get('shift_to', '-'),
+                "REMARK": r.get('remark', '-'),
+                "BED": r.get('bed_no') if r.get('bed_no') else "-",
+                "STATUS": r.get('status', 'WAITING')
+            })
+            
+        df_report = pd.DataFrame(report_data)
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            df_report.to_excel(writer, sheet_name="Handover Report", index=False)
+            
+        st.download_button(
+            label="📥 Download Handover Summary",
+            data=buffer.getvalue(),
+            file_name=f"Handover_{today_date_str.replace('/', '-')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
         st.divider(); st.subheader("↕️ Manual List Reordering")
         if req_list:
