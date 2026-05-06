@@ -3,7 +3,7 @@ import pandas as pd
 from google.cloud import firestore
 from google.oauth2 import service_account
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 
 # Page Config
@@ -12,15 +12,12 @@ st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 # --- QUANTUM FLUID + ULTRA-GLASS 3D INTERFACE ---
 st.markdown("""
 <style>
-    /* 1. THE MOVING BACKGROUND: SHARP & VIVID */
     [data-testid="stAppViewContainer"] {
         background-image: url("https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExeTNqazRwZDFlMjcwaTl6OHlvY21ucGd3YWoxaWYycjVsaG1jeGhmbyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/U4ExkAvRpVQGB0NMe0/giphy.gif") !important;
         background-size: cover !important;
         background-position: center !important;
         background-attachment: fixed !important;
     }
-
-    /* 2. BALANCED BRIGHTNESS OVERLAY */
     [data-testid="stAppViewContainer"]::before {
         content: "";
         position: fixed;
@@ -29,8 +26,6 @@ st.markdown("""
         z-index: 0;
         pointer-events: none;
     }
-
-    /* 3. PREMIUM 3D TACTILE GLASS BUTTONS */
     div.stButton > button {
         background: rgba(255, 255, 255, 0.12) !important;
         color: #ffffff !important;
@@ -41,68 +36,13 @@ st.markdown("""
         text-transform: uppercase;
         letter-spacing: 1.5px;
         box-shadow: 0 5px 0px rgba(0,0,0,0.5), 0 8px 20px rgba(0, 229, 255, 0.2) !important;
-        transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
         backdrop-filter: blur(12px);
     }
-
-    div.stButton > button:hover {
-        background: rgba(255, 255, 255, 0.22) !important;
-        transform: translateY(-2px);
-        box-shadow: 0 7px 0px rgba(0,0,0,0.5), 0 15px 25px rgba(0, 229, 255, 0.4) !important;
-    }
-
-    /* 3D "Mechanical Click" */
-    div.stButton > button:active {
-        transform: translateY(5px) !important;
-        box-shadow: 0 0px 0px transparent !important;
-        background: rgba(0, 229, 255, 0.2) !important;
-        color: #00e5ff !important;
-    }
-
-    /* 4. ULTRA-TRANSPARENT CRYSTAL PANELS (Glassmorphism) */
-    [data-testid="stMetric"], .stForm, .stExpander {
-        background: rgba(255, 255, 255, 0.06) !important; 
-        backdrop-filter: blur(28px) saturate(180%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.25) !important;
-        border-radius: 22px !important;
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6) !important;
-        z-index: 1;
-        margin-bottom: 25px !important;
-    }
-
-    /* 5. TYPOGRAPHY: SHARP & READABLE */
-    h1 {
-        font-weight: 900 !important;
-        color: #ffffff !important;
-        text-shadow: 0 4px 15px rgba(0,0,0,0.7);
-        text-align: center;
-        letter-spacing: 2px;
-    }
-
-    [data-testid="stMetricValue"] {
-        color: #ffffff !important;
-        text-shadow: 0 0 20px rgba(0, 229, 255, 0.6);
-        font-weight: 800 !important;
-    }
-    
-    [data-testid="stMetricLabel"] {
-        color: rgba(255, 255, 255, 0.85) !important;
-        font-weight: 600 !important;
-        text-transform: uppercase;
-        font-size: 0.85rem !important;
-    }
-
-    /* Sidebar Glass UI */
+    h1 { color: #ffffff !important; text-shadow: 0 4px 15px rgba(0,0,0,0.7); text-align: center; }
     [data-testid="stSidebar"] {
         background-color: rgba(0, 5, 15, 0.85) !important;
         backdrop-filter: blur(24px);
-        border-right: 1px solid rgba(255, 255, 255, 0.15);
     }
-
-    /* Professional Scrollbar */
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.25); border-radius: 10px; }
-    ::-webkit-scrollbar-track { background: transparent; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -130,18 +70,33 @@ bed_structure = {
 }
 all_bed_ids = [b for w in bed_structure.values() for b in w]
 
-# --- 3. FAILSAFE DATA FETCH ---
+# --- 3. DATA FETCH & SORTING ---
+# Fixed Timezone and strict sorting
+ist_tz = pytz.timezone('Asia/Kolkata')
+today_ist = datetime.now(ist_tz)
+today_date_str = today_ist.strftime('%d/%m/%Y')
+
 if db:
     if 'cached_live_data' not in st.session_state or 'cached_req_list' not in st.session_state:
-        status_doc = db.collection("settings").document("dashboard_status").get()
-        st.session_state.is_live = status_doc.to_dict().get("status", "LIVE") if status_doc.exists else "LIVE"
+        # 1. Fetch beds
         docs = db.collection("beds").stream()
         st.session_state.cached_live_data = {doc.id: doc.to_dict() for doc in docs}
         
-        reqs_stream = db.collection("bed_requests").limit(100).stream()
-        raw_reqs = [r.to_dict() | {'ID': r.id} for r in reqs_stream]
-        st.session_state.cached_req_list = sorted(raw_reqs, key=lambda x: (x.get('position', 999), x.get('timestamp', datetime.min)))
+        # 2. Fetch requests (unlimited to get all)
+        reqs_stream = db.collection("bed_requests").stream()
+        raw_reqs = []
+        for r in reqs_stream:
+            data = r.to_dict()
+            ts = data.get('timestamp')
+            # Critical: Localize timestamp to IST if it comes as naive
+            if ts and ts.tzinfo is None: ts = ist_tz.localize(ts)
+            data['timestamp'] = ts
+            raw_reqs.append(data | {'ID': r.id})
+            
+        # Critical Fix: Sort by raw timestamp primarily
+        st.session_state.cached_req_list = sorted(raw_reqs, key=lambda x: (x.get('position', 999), x.get('timestamp', today_ist)))
         
+        # 3. Fetch future bookings
         book_stream = db.collection("future_bookings").order_by("book_date", direction=firestore.Query.ASCENDING).stream()
         st.session_state.cached_book_list = [b.to_dict() | {'ID': b.id} for b in book_stream]
 
@@ -152,26 +107,25 @@ else:
     st.error("Database Connection Failed."); st.stop()
 
 # --- 4. HEADER ---
-tz = pytz.timezone('Asia/Kolkata')
-today_date_str = datetime.now(tz).strftime('%d/%m/%Y')
-today_iso = datetime.now(tz).strftime('%Y-%m-%d')
-
 st.markdown("<h1 style='text-align: center; margin-bottom: 0;'>Bed Management Dashboard</h1>", unsafe_allow_html=True)
 st.markdown(f"<p style='text-align: center;'><b>Current Date: {today_date_str}</b></p>", unsafe_allow_html=True)
 
 if st.button("🔄 Refresh Dashboard Data"):
-    for key in ['cached_live_data', 'is_live', 'cached_req_list', 'cached_book_list']:
+    for key in ['cached_live_data', 'cached_req_list', 'cached_book_list']:
         if key in st.session_state: del st.session_state[key]
     st.rerun()
 
 # --- 5. ALERTS ---
+# Fixed alert timestamp logic
+today_iso = today_ist.strftime('%Y-%m-%d')
 alerts = [b for b in book_list if b.get('book_date') == today_iso]
 for a in alerts:
     with st.container():
         st.markdown(f"<div style='background-color: #FFEBEE; border: 2px solid #FF5252; padding: 15px; border-radius: 5px; margin-bottom: 5px;'><b>🚨 TODAY'S BOOKING: {a.get('name', 'N/A')}</b></div>", unsafe_allow_html=True)
         if st.button(f"✅ Admit: {a.get('name')}", key=f"ack_{a['ID']}"):
             db.collection("bed_requests").add({
-                "timestamp": datetime.now(tz), "name": a.get('name'), "category": a.get('category', 'OTHER'),
+                "timestamp": datetime.now(ist_tz), # Direct IST time
+                "name": a.get('name'), "category": a.get('category', 'OTHER'),
                 "dr_name": a.get('dr'), "shift_from": "BOOKING", "shift_to": a.get('preference', 'PVT'), 
                 "remark": f"Reserved: {a.get('pref_bed','-')}", "bed_no": "", "status": "WAITING", 
                 "date": today_date_str, "position": 999
@@ -182,6 +136,7 @@ for a in alerts:
             st.rerun()
 
 # --- 6. MANAGE PATIENT REQUESTS ---
+# Fixed duplicate check and raw timestamp usage
 with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
     pending = sum(1 for r in req_list if r.get('status') == "WAITING" and not r.get('bed_no'))
     allotted = sum(1 for r in req_list if r.get('status') == "DONE")
@@ -202,24 +157,24 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         if st.form_submit_button("Submit Request"):
             if p_name:
                 p_name_clean = p_name.strip().lower()
-                p_dr_clean = dr_name.strip().lower()
-                is_duplicate = False
                 
-                # Rigid and normalized duplicate check
+                # Rigid Duplicate Check (same patient, from/to ward, status waiting)
+                is_duplicate = False
                 for r in req_list:
                     if (r.get('name', '').strip().lower() == p_name_clean and 
-                        r.get('category') == p_cat and 
-                        r.get('dr_name', '').strip().lower() == p_dr_clean and 
                         r.get('shift_from') == p_fr and 
-                        r.get('shift_to') == p_to):
+                        r.get('shift_to') == p_to and
+                        r.get('status') == "WAITING"):
                         is_duplicate = True
                         break
                         
                 if is_duplicate:
-                    st.warning("⚠️ Duplicate Entry: An identical shifting request already exists in the list.")
+                    st.warning(f"⚠️ Duplicate Check Blocked: {p_name} is already WAITING to shift from {p_fr} to {p_to}.")
                 else:
+                    # direct use of IST time, no normalization
                     db.collection("bed_requests").add({
-                        "timestamp": datetime.now(tz), "name": p_name, "category": p_cat,
+                        "timestamp": datetime.now(ist_tz), 
+                        "name": p_name, "category": p_cat,
                         "dr_name": dr_name, "shift_from": p_fr, "shift_to": p_to, 
                         "remark": rem, "bed_no": "", "status": "WAITING", "date": today_date_str, "position": 999
                     })
@@ -235,6 +190,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         for idx, r in enumerate(req_list):
             if sq and sq not in r.get('name', '').lower(): continue
             
+            # Status Logic
             current_status = r.get('status', 'WAITING')
             b_no = r.get('bed_no', '')
             if b_no and current_status == "WAITING": current_status = "DONE"
@@ -251,6 +207,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                 r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
                 
             # --- DATE/TIME STAMP SECTION IN A SEPARATE SUB-ROW ---
+            # Fixed timestamp display logic
             ts = r.get('timestamp')
             ts_str = ts.strftime('%d/%m/%Y %I:%M:%S %p') if isinstance(ts, datetime) else "-"
             st.markdown(f"<div style='font-size: 11px; color: rgba(255,255,255,0.7); margin-left: 35px; margin-top: -12px; margin-bottom: 12px;'>🕒 Entry Timestamp (IST): <b>{ts_str}</b></div>", unsafe_allow_html=True)
@@ -356,7 +313,10 @@ with st.sidebar:
                 old_bed = target_data.get('bed_no')
                 if old_bed and old_bed in all_bed_ids: db.collection("beds").document(old_bed).set({"status": "VACANT", "patient": ""})
                 if new_bed and new_bed in all_bed_ids and new_status == "DONE": db.collection("beds").document(new_bed).set({"status": "ALLOTTED", "patient": target_data['name']})
+                
+                # Direct force update to request, keeping raw timestamp
                 db.collection("bed_requests").document(target_id).update({"status": new_status, "bed_no": new_bed})
+                
                 for k in ['cached_req_list', 'cached_live_data']: 
                     if k in st.session_state: del st.session_state[k]
                 st.rerun()
