@@ -223,8 +223,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                         r.get('category') == p_cat and 
                         r.get('dr_name', '').strip().lower() == p_dr_clean and 
                         r.get('shift_from') == p_fr and 
-                        r.get('shift_to') == p_to and 
-                        r.get('status') == "WAITING"):
+                        r.get('shift_to') == p_to ):
                         is_duplicate = True
                         break
                         
