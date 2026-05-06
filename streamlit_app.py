@@ -5,7 +5,7 @@ from google.oauth2 import service_account
 import json
 from datetime import datetime, timedelta
 import pytz
-import io  # Add this import
+import io
 
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
@@ -158,7 +158,7 @@ if db:
         
         book_stream = db.collection("future_bookings").order_by("book_date", direction=firestore.Query.ASCENDING).stream()
         st.session_state.cached_book_list = [b.to_dict() | {'ID': b.id} for b in book_stream]
-
+        
     live_data = st.session_state.cached_live_data
     req_list = st.session_state.cached_req_list
     book_list = st.session_state.cached_book_list
@@ -185,7 +185,8 @@ for a in alerts:
                 "timestamp": datetime.now(ist_tz),
                 "name": a.get('name'), "category": a.get('category', 'OTHER'),
                 "dr_name": a.get('dr'), "shift_from": "BOOKING", "shift_to": a.get('preference', 'PVT'), 
-                "remark": f"Reserved: {a.get('pref_bed','-')}", "bed_no": "", "status": "WAITING", 
+                "remark": f"Reserved: {a.get('pref_bed','-')}",
+                "bed_no": "", "status": "WAITING", 
                 "date": today_date_str, "position": 999
             })
             db.collection("future_bookings").document(a['ID']).delete()
@@ -219,11 +220,11 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                 
                 for r in req_list:
                     if (r.get('name', '').strip().lower() == p_name_clean and 
-                        r.get('category') == p_cat and 
-                        r.get('dr_name', '').strip().lower() == p_dr_clean and 
-                        r.get('shift_from') == p_fr and 
-                        r.get('shift_to') == p_to and 
-                        r.get('status') == "WAITING"):
+                       r.get('category') == p_cat and 
+                       r.get('dr_name', '').strip().lower() == p_dr_clean and 
+                       r.get('shift_from') == p_fr and 
+                       r.get('shift_to') == p_to and 
+                       r.get('status') == "WAITING"):
                         is_duplicate = True
                         break
                         
@@ -234,7 +235,8 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                         "timestamp": datetime.now(ist_tz), 
                         "name": p_name, "category": p_cat,
                         "dr_name": dr_name, "shift_from": p_fr, "shift_to": p_to, 
-                        "remark": rem, "bed_no": "", "status": "WAITING", "date": today_date_str, "position": 999
+                        "remark": rem, "bed_no": "",
+                        "status": "WAITING", "date": today_date_str, "position": 999
                     })
                     if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                     st.rerun()
@@ -260,7 +262,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             color = color_map.get(current_status, "orange")
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{current_status}</span>", unsafe_allow_html=True)
             if current_status == "DONE":
-                slip = f"""====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r['name']}\n------------------------------------\nBED:  {b_no}\n===================================="""
+                slip = f"""====================================\n     G.E.I.M.S (Bed Management)\n     BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r['name']}\n------------------------------------\nBED:  {b_no}\n===================================="""
                 r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
                 
             ts = r.get('timestamp')
@@ -411,7 +413,8 @@ with st.sidebar:
 
         st.divider(); st.error("⚠️ DATA RESET")
         if st.button("RESET ALL BEDS"):
-            for b in all_bed_ids: db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
+            for b in all_bed_ids:
+                db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
             if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
             st.rerun()
 
