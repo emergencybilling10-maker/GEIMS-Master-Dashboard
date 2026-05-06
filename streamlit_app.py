@@ -323,16 +323,38 @@ with st.sidebar:
             for r in done: rep += f"- {r['name']} -> Bed: {r['bed_no']}\n"
             st.download_button("📥 Get Report", data=rep, file_name=f"Handover_{today_date_str}.txt")
 
-        st.divider(); st.subheader("↕️ Switch Positions")
+       # --- ↕️ ADVANCED POSITION SWITCHER ---
+        st.divider()
+        st.subheader("↕️ Switch Patient Positions")
+        
         if len(req_list) >= 2:
-            p1_name = st.selectbox("Move Patient", [r['name'] for r in req_list], key="reorder_p1")
-            p2_name = st.selectbox("With Patient", [r['name'] for r in req_list], key="reorder_p2")
-            if st.button("Execute Switch"):
-                p1 = next(r for r in req_list if r['name'] == p1_name); p2 = next(r for r in req_list if r['name'] == p2_name)
-                db.collection("bed_requests").document(p1['ID']).update({"position": p2.get('position', 999)})
-                db.collection("bed_requests").document(p2['ID']).update({"position": p1.get('position', 999)})
-                if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
-                st.rerun()
+            # Create a dictionary to map a unique label to each patient's data
+            patient_options = {
+                f"{r['name']} - {r['ID'][:8]} (Pos: {r.get('position', 999)})": r for r in req_list
+            }
+            
+            p1_label = st.selectbox("Select Patient to Move", list(patient_options.keys()), key="reorder_p1_adv")
+            p2_label = st.selectbox("Switch With Patient", list(patient_options.keys()), key="reorder_p2_adv")
+            
+            if st.button("Execute Switch", key="execute_switch_adv"):
+                if p1_label == p2_label:
+                    st.warning("Please select two different patients to switch.")
+                else:
+                    p1_data = patient_options[p1_label]
+                    p2_data = patient_options[p2_label]
+                    
+                    pos1 = p1_data.get('position', 999)
+                    pos2 = p2_data.get('position', 999)
+                    
+                    # Perform the swap in the database
+                    db.collection("bed_requests").document(p1_data['ID']).update({"position": pos2})
+                    db.collection("bed_requests").document(p2_data['ID']).update({"position": pos1})
+                    
+                    if 'cached_req_list' in st.session_state: 
+                        del st.session_state['cached_req_list']
+                        
+                    st.success(f"Switched positions between {p1_data['name']} and {p2_data['name']}!")
+                    st.rerun()
 
         st.divider(); st.subheader("🛠️ Patient Modification Hub")
         if req_list:
