@@ -5,7 +5,6 @@ from google.oauth2 import service_account
 import json
 from datetime import datetime, timedelta
 import pytz
-import io
 
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
@@ -15,7 +14,7 @@ st.markdown("""
 <style>
     /* 1. THE MOVING BACKGROUND: SHARP & VIVID */
     [data-testid="stAppViewContainer"] {
-        background-image: url("https://media3.giphy.com/media/v1.Y2lkPTc5MGI3ExeTNqazRwZDFlMjcwaTl6OHlvY21ucGd3YWoxaWYycjVsaG1jeGhmbyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/U4ExkAvRpVQGB0NMe0/giphy.gif") !important;
+        background-image: url("https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExeTNqazRwZDFlMjcwaTl6OHlvY21ucGd3YWoxaWYycjVsaG1jeGhmbyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/U4ExkAvRpVQGB0NMe0/giphy.gif") !important;
         background-size: cover !important;
         background-position: center !important;
         background-attachment: fixed !important;
@@ -158,7 +157,7 @@ if db:
         
         book_stream = db.collection("future_bookings").order_by("book_date", direction=firestore.Query.ASCENDING).stream()
         st.session_state.cached_book_list = [b.to_dict() | {'ID': b.id} for b in book_stream]
-        
+
     live_data = st.session_state.cached_live_data
     req_list = st.session_state.cached_req_list
     book_list = st.session_state.cached_book_list
@@ -185,8 +184,7 @@ for a in alerts:
                 "timestamp": datetime.now(ist_tz),
                 "name": a.get('name'), "category": a.get('category', 'OTHER'),
                 "dr_name": a.get('dr'), "shift_from": "BOOKING", "shift_to": a.get('preference', 'PVT'), 
-                "remark": f"Reserved: {a.get('pref_bed','-')}",
-                "bed_no": "", "status": "WAITING", 
+                "remark": f"Reserved: {a.get('pref_bed','-')}", "bed_no": "", "status": "WAITING", 
                 "date": today_date_str, "position": 999
             })
             db.collection("future_bookings").document(a['ID']).delete()
@@ -220,11 +218,11 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                 
                 for r in req_list:
                     if (r.get('name', '').strip().lower() == p_name_clean and 
-                       r.get('category') == p_cat and 
-                       r.get('dr_name', '').strip().lower() == p_dr_clean and 
-                       r.get('shift_from') == p_fr and 
-                       r.get('shift_to') == p_to and 
-                       r.get('status') == "WAITING"):
+                        r.get('category') == p_cat and 
+                        r.get('dr_name', '').strip().lower() == p_dr_clean and 
+                        r.get('shift_from') == p_fr and 
+                        r.get('shift_to') == p_to and 
+                        r.get('status') == "WAITING"):
                         is_duplicate = True
                         break
                         
@@ -235,8 +233,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                         "timestamp": datetime.now(ist_tz), 
                         "name": p_name, "category": p_cat,
                         "dr_name": dr_name, "shift_from": p_fr, "shift_to": p_to, 
-                        "remark": rem, "bed_no": "",
-                        "status": "WAITING", "date": today_date_str, "position": 999
+                        "remark": rem, "bed_no": "", "status": "WAITING", "date": today_date_str, "position": 999
                     })
                     if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                     st.rerun()
@@ -262,7 +259,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             color = color_map.get(current_status, "orange")
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{current_status}</span>", unsafe_allow_html=True)
             if current_status == "DONE":
-                slip = f"""====================================\n     G.E.I.M.S (Bed Management)\n     BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r['name']}\n------------------------------------\nBED:  {b_no}\n===================================="""
+                slip = f"""====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r['name']}\n------------------------------------\nBED:  {b_no}\n===================================="""
                 r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
                 
             ts = r.get('timestamp')
@@ -315,42 +312,11 @@ with st.sidebar:
         show_dashboard = True
         
         st.subheader("📋 Reports")
-        
-        report_data = []
-        for idx, r in enumerate(req_list):
-            ts = r.get('timestamp')
-            if ts:
-                if ts.tzinfo is None:
-                    ts = pytz.utc.localize(ts)
-                ts_ist = ts.astimezone(ist_tz)
-                ts_str = ts_ist.strftime('%d/%m/%Y %I:%M:%S %p')
-            else:
-                ts_str = "-"
-                
-            report_data.append({
-                "S.N": idx + 1,
-                "NAME": r.get('name', '-'),
-                "Date & time stamp": ts_str,
-                "CAT": r.get('category', '-'),
-                "DR": r.get('dr_name', '-'),
-                "FROM": r.get('shift_from', '-'),
-                "TO": r.get('shift_to', '-'),
-                "REMARK": r.get('remark', '-'),
-                "BED": r.get('bed_no') if r.get('bed_no') else "-",
-                "STATUS": r.get('status', 'WAITING')
-            })
-            
-        df_report = pd.DataFrame(report_data)
-        buffer = io.BytesIO()
-        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-            df_report.to_excel(writer, sheet_name="Handover Report", index=False)
-            
-        st.download_button(
-            label="📥 Download Handover Summary",
-            data=buffer.getvalue(),
-            file_name=f"Handover_{today_date_str.replace('/', '-')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        if st.button("Download Handover Summary"):
+            done = [r for r in req_list if r.get('bed_no')]
+            rep = f"GEIMS SHIFT REPORT - {today_date_str}\n\n"
+            for r in done: rep += f"- {r['name']} -> Bed: {r['bed_no']}\n"
+            st.download_button("📥 Get Report", data=rep, file_name=f"Handover_{today_date_str}.txt")
 
         st.divider(); st.subheader("↕️ Manual List Reordering")
         if req_list:
@@ -413,8 +379,7 @@ with st.sidebar:
 
         st.divider(); st.error("⚠️ DATA RESET")
         if st.button("RESET ALL BEDS"):
-            for b in all_bed_ids:
-                db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
+            for b in all_bed_ids: db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
             if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
             st.rerun()
 
