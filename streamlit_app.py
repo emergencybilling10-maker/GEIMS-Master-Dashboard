@@ -201,18 +201,22 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         
         if st.form_submit_button("Submit Request"):
             if p_name:
+                p_name_clean = p_name.strip().lower()
+                p_dr_clean = dr_name.strip().lower()
                 is_duplicate = False
+                
+                # Rigid and normalized duplicate check
                 for r in req_list:
-                    if (r.get('name', '').strip().lower() == p_name.strip().lower() and 
+                    if (r.get('name', '').strip().lower() == p_name_clean and 
                         r.get('category') == p_cat and 
-                        r.get('dr_name', '').strip().lower() == dr_name.strip().lower() and 
+                        r.get('dr_name', '').strip().lower() == p_dr_clean and 
                         r.get('shift_from') == p_fr and 
                         r.get('shift_to') == p_to):
                         is_duplicate = True
                         break
                         
                 if is_duplicate:
-                    st.warning("⚠️ Duplicate Entry: An identical shifting request has already been logged.")
+                    st.warning("⚠️ Duplicate Entry: An identical shifting request already exists in the list.")
                 else:
                     db.collection("bed_requests").add({
                         "timestamp": datetime.now(tz), "name": p_name, "category": p_cat,
@@ -245,12 +249,13 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             if current_status == "DONE":
                 slip = f"""====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r['name']}\n------------------------------------\nBED:  {b_no}\n===================================="""
                 r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
-            
+                
+            # --- DATE/TIME STAMP SECTION IN A SEPARATE SUB-ROW ---
             ts = r.get('timestamp')
             ts_str = ts.strftime('%d/%m/%Y %I:%M:%S %p') if isinstance(ts, datetime) else "-"
-            st.markdown(f"<div style='font-size: 10px; color: rgba(255,255,255,0.6); margin-left: 35px; margin-top: -10px; margin-bottom: 15px;'>🕒 Timestamp: {ts_str}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size: 11px; color: rgba(255,255,255,0.7); margin-left: 35px; margin-top: -12px; margin-bottom: 12px;'>🕒 Entry Timestamp (IST): <b>{ts_str}</b></div>", unsafe_allow_html=True)
 
-# --- PDF CONSENT FORM PANEL ---
+# --- NEW: PDF CONSENT FORM PANEL ---
 st.subheader("📝 ADMISSION & SHIFTING CONSENT FORMS (PDF)")
 
 def get_pdf_data(file_name):
@@ -263,40 +268,40 @@ def get_pdf_data(file_name):
 c_col1, c_col2, c_col3, c_col4, c_col5 = st.columns(5)
 
 # 1. SELF PAY
+pdf_self = get_pdf_data("consent_self_pay.pdf")
 with c_col1:
-    pdf_self = get_pdf_data("consent_self_pay.pdf")
     if pdf_self:
         st.download_button("💳 1 - SELF PAY", pdf_self, file_name="Consent_SelfPay.pdf", mime="application/pdf")
     else:
         st.error("Self Pay PDF Missing")
 
 # 2. CGHS CASH
+pdf_cghs_cash = get_pdf_data("consent_cghs_cash.pdf")
 with c_col2:
-    pdf_cghs_cash = get_pdf_data("consent_cghs_cash.pdf")
     if pdf_cghs_cash:
         st.download_button("💰 2 - CGHS CASH", pdf_cghs_cash, file_name="Consent_CGHS_Cash.pdf", mime="application/pdf")
     else:
         st.error("CGHS Cash PDF Missing")
 
 # 3. ECHS
+pdf_echs = get_pdf_data("consent_echs.pdf")
 with c_col3:
-    pdf_echs = get_pdf_data("consent_echs.pdf")
     if pdf_echs:
         st.download_button("🎖️ 3 - ECHS", pdf_echs, file_name="Consent_ECHS.pdf", mime="application/pdf")
     else:
         st.error("ECHS PDF Missing")
 
 # 4. CGHS CREDIT & PSU
+pdf_cghs_credit = get_pdf_data("consent_cghs_credit.pdf")
 with c_col4:
-    pdf_cghs_credit = get_pdf_data("consent_cghs_credit.pdf")
     if pdf_cghs_credit:
         st.download_button("🏥 4 - CGHS CREDIT/PSU", pdf_cghs_credit, file_name="Consent_CGHS_Credit.pdf", mime="application/pdf")
     else:
         st.error("Credit PDF Missing")
 
 # 5. TPA
+pdf_tpa = get_pdf_data("consent_tpa.pdf")
 with c_col5:
-    pdf_tpa = get_pdf_data("consent_tpa.pdf")
     if pdf_tpa:
         st.download_button("🏢 5 - TPA", pdf_tpa, file_name="Consent_TPA.pdf", mime="application/pdf")
     else:
