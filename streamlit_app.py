@@ -323,31 +323,16 @@ with st.sidebar:
             for r in done: rep += f"- {r['name']} -> Bed: {r['bed_no']}\n"
             st.download_button("📥 Get Report", data=rep, file_name=f"Handover_{today_date_str}.txt")
 
-       # ↕️ MANUAL POSITION REORDERING
-        st.divider(); st.subheader("↕️ Manual Position Reordering")
+       # --- ↕️ MANUAL LIST REORDERING ---
+        st.divider(); st.subheader("↕️ Manual List Reordering")
         if req_list:
-            reorder_p = st.selectbox("Select Patient", [r['name'] for r in req_list], key="reorder_sel")
-            new_pos = st.number_input("New Position Number", min_value=1, value=1)
-            
+            reorder_p = st.selectbox("Select Patient to Move", [r['name'] for r in req_list], key="reorder_sel")
+            new_pos = st.number_input("New Position Number", min_value=1, value=10)
             if st.button("Apply Position Change"):
-                # Find target patient ID
                 r_id = next(r['ID'] for r in req_list if r['name'] == reorder_p)
-                
-                # Update target patient's position
                 db.collection("bed_requests").document(r_id).update({"position": new_pos})
-                
-                # Shift other patient's positions down to make space
-                for r in req_list:
-                    if r['ID'] != r_id:
-                        curr_pos = r.get('position', 999)
-                        if curr_pos >= new_pos:
-                            db.collection("bed_requests").document(r['ID']).update({"position": curr_pos + 1})
-                            
-                if 'cached_req_list' in st.session_state: 
-                    del st.session_state['cached_req_list']
-                
-                st.success(f"Successfully moved {reorder_p} to position {new_pos} and shifted others below.")
-                st.rerun()
+                if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
+                st.success(f"Moved {reorder_p} to Position {new_pos}"); st.rerun()
 
         st.divider(); st.subheader("🛠️ Patient Modification Hub")
         if req_list:
