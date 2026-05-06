@@ -92,12 +92,14 @@ st.markdown("""
         font-size: 0.85rem !important;
     }
 
+    /* Sidebar Glass UI */
     [data-testid="stSidebar"] {
         background-color: rgba(0, 5, 15, 0.85) !important;
         backdrop-filter: blur(24px);
         border-right: 1px solid rgba(255, 255, 255, 0.15);
     }
 
+    /* Professional Scrollbar */
     ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.25); border-radius: 10px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -199,18 +201,19 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         
         if st.form_submit_button("Submit Request"):
             if p_name:
+                # Check for duplicate
                 is_duplicate = False
                 for r in req_list:
-                    if (r.get('name', '').lower().strip() == p_name.lower().strip() and
-                        r.get('category') == p_cat and
-                        r.get('dr_name') == dr_name and
-                        r.get('shift_from') == p_fr and
+                    if (r.get('name', '').lower() == p_name.lower() and 
+                        r.get('category') == p_cat and 
+                        r.get('dr_name') == dr_name and 
+                        r.get('shift_from') == p_fr and 
                         r.get('shift_to') == p_to):
                         is_duplicate = True
                         break
-                
+                        
                 if is_duplicate:
-                    st.warning("🚨 Duplicate Entry: An identical shifting request entry already exists!")
+                    st.warning("⚠️ Duplicate entry detected: An identical shifting request already exists in the list.")
                 else:
                     db.collection("bed_requests").add({
                         "timestamp": datetime.now(tz), "name": p_name, "category": p_cat,
@@ -226,6 +229,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         h_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1, 1.5])
         headers = ["S.N", "NAME", "CAT", "DR", "FROM", "TO", "REMARK", "BED", "STATUS", "ACTION"]
         for col, h in zip(h_cols, headers): col.write(f"**{h}**")
+        
         for idx, r in enumerate(req_list):
             if sq and sq not in r.get('name', '').lower(): continue
             
@@ -233,27 +237,23 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             b_no = r.get('bed_no', '')
             if b_no and current_status == "WAITING": current_status = "DONE"
             
-            # Format time-stamp from record
-            r_rem = r.get('remark', '')
-            r_time = ""
-            if 'timestamp' in r:
-                ts = r['timestamp']
-                if isinstance(ts, datetime):
-                    r_time = ts.astimezone(tz).strftime('%I:%M %p')
-                else:
-                    r_time = str(ts)
-            display_remark = f"[{r_time}] {r_rem}" if r_time else r_rem
-            
             r_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1, 1.5])
             r_cols[0].write(idx + 1); r_cols[1].write(r.get('name', '-')); r_cols[2].write(r.get('category', '-'))
             r_cols[3].write(r.get('dr_name', '-')); r_cols[4].write(r.get('shift_from', '-')); r_cols[5].write(r.get('shift_to', '-'))
-            r_cols[6].write(display_remark if display_remark else "-"); r_cols[7].write(b_no if b_no else "-")
+            r_cols[6].write(r.get('remark', '-')); r_cols[7].write(b_no if b_no else "-")
+            
             color_map = {"DONE": "green", "CANCELLED": "red", "GEN-WARD ALLOTTED": "blue", "HOLD": "purple"}
             color = color_map.get(current_status, "orange")
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{current_status}</span>", unsafe_allow_html=True)
+            
             if current_status == "DONE":
                 slip = f"""====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r['name']}\n------------------------------------\nBED:  {b_no}\n===================================="""
                 r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
+            
+            # --- DATE/TIME STAMP SECTION IN A SEPARATE SUB-ROW ---
+            ts = r.get('timestamp')
+            ts_str = ts.strftime('%d/%m/%Y %I:%M:%S %p') if isinstance(ts, datetime) else "-"
+            st.markdown(f"<div style='font-size: 10px; color: rgba(255,255,255,0.6); margin-left: 35px; margin-top: -10px; margin-bottom: 15px;'>🕒 Timestamp: {ts_str}</div>", unsafe_allow_html=True)
 
 # --- NEW: PDF CONSENT FORM PANEL ---
 st.subheader("📝 ADMISSION & SHIFTING CONSENT FORMS (PDF)")
@@ -266,6 +266,8 @@ def get_pdf_data(file_name):
         return None
 
 c_col1, c_col2, c_col3, c_col4, c_col5 = st.columns(5)
+
+# 1. SELF PAY
 pdf_self = get_pdf_data("consent_self_pay.pdf")
 with c_col1:
     if pdf_self:
@@ -273,6 +275,7 @@ with c_col1:
     else:
         st.error("Self Pay PDF Missing")
 
+# 2. CGHS CASH
 pdf_cghs_cash = get_pdf_data("consent_cghs_cash.pdf")
 with c_col2:
     if pdf_cghs_cash:
@@ -280,6 +283,7 @@ with c_col2:
     else:
         st.error("CGHS Cash PDF Missing")
 
+# 3. ECHS
 pdf_echs = get_pdf_data("consent_echs.pdf")
 with c_col3:
     if pdf_echs:
@@ -287,6 +291,7 @@ with c_col3:
     else:
         st.error("ECHS PDF Missing")
 
+# 4. CGHS CREDIT & PSU
 pdf_cghs_credit = get_pdf_data("consent_cghs_credit.pdf")
 with c_col4:
     if pdf_cghs_credit:
@@ -294,6 +299,7 @@ with c_col4:
     else:
         st.error("Credit PDF Missing")
 
+# 5. TPA
 pdf_tpa = get_pdf_data("consent_tpa.pdf")
 with c_col5:
     if pdf_tpa:
