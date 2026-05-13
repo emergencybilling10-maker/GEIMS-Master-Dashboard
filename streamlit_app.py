@@ -13,6 +13,11 @@ st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 # --- QUANTUM FLUID + ULTRA-GLASS 3D INTERFACE ---
 st.markdown("""
 <style>
+    /* HIDE STREAMLIT frontend GITHUB CODE DISCOVERY LINK DEPLOY BUTTON OVERLAY */
+    .stAppDeployButton, a[href*="github.com"], [data-testid="stSourceCodeLink"] {
+        display: none !important;
+    }
+
     /* 1. THE MOVING BACKGROUND: SHARP & VIVID */
     [data-testid="stAppViewContainer"] {
         background-image: url("https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExeTNqazRwZDFlMjcwaTl6OHlvY21ucGd3YWoxaWYycjVsaG1jeGhmbyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/U4ExkAvRpVQGB0NMe0/giphy.gif") !important;
@@ -154,6 +159,7 @@ if db:
                 data['timestamp'] = ts
             raw_reqs.append(data | {'ID': r.id})
             
+        # Unified tracking logic sorting array setup
         st.session_state.cached_req_list = sorted(raw_reqs, key=lambda x: (x.get('position', 999), x.get('timestamp', today_ist)))
         
         book_stream = db.collection("future_bookings").order_by("book_date", direction=firestore.Query.ASCENDING).stream()
@@ -262,7 +268,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             color = color_map.get(current_status, "orange")
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{current_status}</span>", unsafe_allow_html=True)
             if current_status == "DONE":
-                slip = f"""====================================\n     G.E.I.M.S (Bed Management)\n     BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r['name']}\n------------------------------------\nBED:  {b_no}\n===================================="""
+                slip = f"""====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r['name']}\n------------------------------------\nBED:  {b_no}\n===================================="""
                 r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r['name']}.txt", key=f"rec_{r['ID']}")
                 
             ts = r.get('timestamp')
@@ -352,6 +358,7 @@ with st.sidebar:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
+        # ↕️ FIXED LIST REORDERING LOGIC
         st.divider(); st.subheader("↕️ Manual List Reordering")
         if req_list:
             reorder_p = st.selectbox("Select Patient to Move", [r['name'] for r in req_list], key="reorder_sel")
@@ -359,10 +366,12 @@ with st.sidebar:
             if st.button("Apply Position Change"):
                 target_r = next(r for r in req_list if r['name'] == reorder_p)
                 
+                # Filter out the moving record and construct sequential list positioning
                 sorted_list = sorted(req_list, key=lambda x: x.get('position', 999))
                 sorted_list = [i for i in sorted_list if i['ID'] != target_r['ID']]
                 sorted_list.insert(int(new_pos) - 1, target_r)
                 
+                # Perform batch transactional updates sequentially to match local cache positioning
                 for idx, r in enumerate(sorted_list):
                     db.collection("bed_requests").document(r['ID']).update({"position": idx + 1})
                     
@@ -390,7 +399,7 @@ with st.sidebar:
                     if k in st.session_state: del st.session_state[k]
                 st.rerun()
 
-        # 📝 ENTRY MODIFICATION (RE-ADDED)
+        # 📝 ENTRY MODIFICATION
         st.divider(); st.subheader("📝 Entry Modification")
         if req_list:
             target = st.selectbox("Select Patient to Edit", [r['name'] for r in req_list], key="sb_mod")
