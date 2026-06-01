@@ -159,7 +159,6 @@ if db:
                 data['timestamp'] = ts
             raw_reqs.append(data | {'ID': r.id})
             
-        # Unified tracking logic sorting array setup
         st.session_state.cached_req_list = sorted(raw_reqs, key=lambda x: (x.get('position', 999), x.get('timestamp', today_ist)))
         
         book_stream = db.collection("future_bookings").order_by("book_date", direction=firestore.Query.ASCENDING).stream()
@@ -249,12 +248,25 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
 
     if req_list:
         st.divider()
-        sq = st.text_input("🔍 Search Patient Name", "").lower()
+        
+        # --- NEW FILTER CONTROLS ---
+        fc1, fc2 = st.columns([2, 2])
+        sq = fc1.text_input("🔍 Search Patient Name", "").lower()
+        # The key filter you requested:
+        shift_filter = fc2.selectbox("📂 Filter by Room Preference (SHIFT TO)", ["ALL", "DELUXE", "PRIVATE", "SEMI-PRIVATE", "GEN-WARD"])
+
+        st.divider()
         h_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1, 1.5])
         headers = ["S.N", "NAME", "CAT", "DR", "FROM", "TO", "REMARK", "BED", "STATUS", "ACTION"]
         for col, h in zip(h_cols, headers): col.write(f"**{h}**")
+        
         for idx, r in enumerate(req_list):
-            if sq and sq not in r.get('name', '').lower(): continue
+            # Applying the Filters
+            name_match = sq in r.get('name', '').lower()
+            room_match = (shift_filter == "ALL") or (r.get('shift_to') == shift_filter)
+            
+            if not (name_match and room_match):
+                continue
             
             current_status = r.get('status', 'WAITING')
             b_no = r.get('bed_no', '')
@@ -273,12 +285,10 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                 
             ts = r.get('timestamp')
             if ts:
-                if ts.tzinfo is None:
-                    ts = pytz.utc.localize(ts)
+                if ts.tzinfo is None: ts = pytz.utc.localize(ts)
                 ts_ist = ts.astimezone(ist_tz)
                 ts_str = ts_ist.strftime('%d/%m/%Y %I:%M:%S %p')
-            else:
-                ts_str = "-"
+            else: ts_str = "-"
             st.markdown(f"<div style='font-size: 11px; color: rgba(255,255,255,0.7); margin-left: 35px; margin-top: -12px; margin-bottom: 12px;'>🕒 Entry Timestamp (IST): <b>{ts_str}</b></div>", unsafe_allow_html=True)
 
 # --- PDF CONSENT FORM PANEL ---
@@ -286,22 +296,15 @@ st.subheader("📝 ADMISSION & SHIFTING CONSENT FORMS (PDF)")
 
 def get_pdf_data(file_name):
     try:
-        with open(file_name, "rb") as f:
-            return f.read()
-    except FileNotFoundError:
-        return None
+        with open(file_name, "rb") as f: return f.read()
+    except FileNotFoundError: return None
 
 c_col1, c_col2, c_col3, c_col4, c_col5 = st.columns(5)
-with c_col1:
-    st.download_button("💳 1 - SELF PAY", get_pdf_data("consent_self_pay.pdf") or b"", file_name="Consent_SelfPay.pdf", mime="application/pdf")
-with c_col2:
-    st.download_button("💰 2 - CGHS CASH", get_pdf_data("consent_cghs_cash.pdf") or b"", file_name="Consent_CGHS_Cash.pdf", mime="application/pdf")
-with c_col3:
-    st.download_button("🎖️ 3 - ECHS", get_pdf_data("consent_echs.pdf") or b"", file_name="Consent_ECHS.pdf", mime="application/pdf")
-with c_col4:
-    st.download_button("🏥 4 - CGHS CREDIT/PSU", get_pdf_data("consent_cghs_credit.pdf") or b"", file_name="Consent_CGHS_Credit.pdf", mime="application/pdf")
-with c_col5:
-    st.download_button("🏢 5 - TPA", get_pdf_data("consent_tpa.pdf") or b"", file_name="Consent_TPA.pdf", mime="application/pdf")
+with c_col1: st.download_button("💳 1 - SELF PAY", get_pdf_data("consent_self_pay.pdf") or b"", file_name="Consent_SelfPay.pdf", mime="application/pdf")
+with c_col2: st.download_button("💰 2 - CGHS CASH", get_pdf_data("consent_cghs_cash.pdf") or b"", file_name="Consent_CGHS_Cash.pdf", mime="application/pdf")
+with c_col3: st.download_button("🎖️ 3 - ECHS", get_pdf_data("consent_echs.pdf") or b"", file_name="Consent_ECHS.pdf", mime="application/pdf")
+with c_col4: st.download_button("🏥 4 - CGHS CREDIT/PSU", get_pdf_data("consent_cghs_credit.pdf") or b"", file_name="Consent_CGHS_Credit.pdf", mime="application/pdf")
+with c_col5: st.download_button("🏢 5 - TPA", get_pdf_data("consent_tpa.pdf") or b"", file_name="Consent_TPA.pdf", mime="application/pdf")
 
 # --- 7. SIDEBAR ---
 show_dashboard = False
@@ -319,62 +322,32 @@ with st.sidebar:
     st.divider(); st.header("🛡️ Admin Panel")
     if st.text_input("Admin Password", type="password") == "GeimsAdmin99":
         show_dashboard = True
-        
         st.subheader("📋 Reports")
-        
         report_data = []
         for idx, r in enumerate(req_list):
             ts = r.get('timestamp')
             if ts:
-                if hasattr(ts, 'tzinfo') and ts.tzinfo is None:
-                    ts = pytz.utc.localize(ts)
+                if hasattr(ts, 'tzinfo') and ts.tzinfo is None: ts = pytz.utc.localize(ts)
                 ts_ist = ts.astimezone(ist_tz)
                 ts_str = ts_ist.strftime('%d/%m/%Y %I:%M:%S %p')
-            else:
-                ts_str = "-"
-                
-            report_data.append({
-                "S.N": idx + 1,
-                "NAME": r.get('name', '-'),
-                "Date & time stamp": ts_str,
-                "CAT": r.get('category', '-'),
-                "DR": r.get('dr_name', '-'),
-                "FROM": r.get('shift_from', '-'),
-                "TO": r.get('shift_to', '-'),
-                "REMARK": r.get('remark', '-'),
-                "BED": r.get('bed_no') if r.get('bed_no') else "-",
-                "STATUS": r.get('status', 'WAITING')
-            })
+            else: ts_str = "-"
+            report_data.append({"S.N": idx + 1, "NAME": r.get('name', '-'), "Date & time stamp": ts_str, "CAT": r.get('category', '-'), "DR": r.get('dr_name', '-'), "FROM": r.get('shift_from', '-'), "TO": r.get('shift_to', '-'), "REMARK": r.get('remark', '-'), "BED": r.get('bed_no') if r.get('bed_no') else "-", "STATUS": r.get('status', 'WAITING')})
             
         df_report = pd.DataFrame(report_data)
         buffer = io.BytesIO()
-        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-            df_report.to_excel(writer, sheet_name="Handover Report", index=False)
-            
-        st.download_button(
-            label="📥 Download Handover Summary",
-            data=buffer.getvalue(),
-            file_name=f"Handover_{today_date_str.replace('/', '-')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer: df_report.to_excel(writer, sheet_name="Handover Report", index=False)
+        st.download_button(label="📥 Download Handover Summary", data=buffer.getvalue(), file_name=f"Handover_{today_date_str.replace('/', '-')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-        # ↕️ FIXED LIST REORDERING LOGIC
         st.divider(); st.subheader("↕️ Manual List Reordering")
         if req_list:
             reorder_p = st.selectbox("Select Patient to Move", [r['name'] for r in req_list], key="reorder_sel")
             new_pos = st.number_input("New Position Number (1, 2, 3...)", min_value=1, value=10, step=1)
             if st.button("Apply Position Change"):
                 target_r = next(r for r in req_list if r['name'] == reorder_p)
-                
-                # Filter out the moving record and construct sequential list positioning
                 sorted_list = sorted(req_list, key=lambda x: x.get('position', 999))
                 sorted_list = [i for i in sorted_list if i['ID'] != target_r['ID']]
                 sorted_list.insert(int(new_pos) - 1, target_r)
-                
-                # Perform batch transactional updates sequentially to match local cache positioning
-                for idx, r in enumerate(sorted_list):
-                    db.collection("bed_requests").document(r['ID']).update({"position": idx + 1})
-                    
+                for idx, r in enumerate(sorted_list): db.collection("bed_requests").document(r['ID']).update({"position": idx + 1})
                 if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                 st.success(f"Moved {reorder_p} to Position {new_pos}"); st.rerun()
 
@@ -387,19 +360,14 @@ with st.sidebar:
             if st.button("Apply Alteration"):
                 p_data = next(r for r in req_list if r['name'] == alt_p)
                 old_bed = p_data.get('bed_no')
-                
                 db.collection("bed_requests").document(p_data['ID']).update({"status": new_s, "bed_no": new_b})
-                if old_bed in all_bed_ids:
-                    db.collection("beds").document(old_bed).set({"status": "VACANT", "patient": ""})
-                if new_b and new_b in all_bed_ids:
-                    db.collection("beds").document(new_b).set({"status": "ALLOTTED", "patient": alt_p})
-                    
+                if old_bed in all_bed_ids: db.collection("beds").document(old_bed).set({"status": "VACANT", "patient": ""})
+                if new_b and new_b in all_bed_ids: db.collection("beds").document(new_b).set({"status": "ALLOTTED", "patient": alt_p})
                 st.success(f"Updated {alt_p} successfully.")
                 for k in ['cached_req_list', 'cached_live_data']: 
                     if k in st.session_state: del st.session_state[k]
                 st.rerun()
 
-        # 📝 ENTRY MODIFICATION
         st.divider(); st.subheader("📝 Entry Modification")
         if req_list:
             target = st.selectbox("Select Patient to Edit", [r['name'] for r in req_list], key="sb_mod")
@@ -422,8 +390,7 @@ with st.sidebar:
 
         st.divider(); st.error("⚠️ DATA RESET")
         if st.button("RESET ALL BEDS"):
-            for b in all_bed_ids:
-                db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
+            for b in all_bed_ids: db.collection("beds").document(b).set({"status": "VACANT", "patient": ""})
             if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
             st.rerun()
 
