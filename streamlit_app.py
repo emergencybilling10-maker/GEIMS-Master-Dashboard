@@ -6,6 +6,7 @@ import json
 from datetime import datetime, timedelta
 import pytz
 import io
+import streamlit.components.v1 as components
 
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
@@ -168,14 +169,14 @@ if db:
     req_list = st.session_state.cached_req_list
     book_list = st.session_state.cached_book_list
 
-    # --- AUTO-ALLOTMENT CHECKER (Executes naturally on interaction) ---
+    # --- AUTO-ALLOTMENT CHECKER ---
+    # Now perfectly accepts HOLD status alongside WAITING for automatic execution
     needs_rerun = False
     for req in req_list:
-        if req.get('status') == "WAITING" and req.get('scheduled_time') and req.get('scheduled_bed'):
+        if req.get('status') in ["WAITING", "HOLD"] and req.get('scheduled_time') and req.get('scheduled_bed'):
             try:
                 s_time = datetime.fromisoformat(req['scheduled_time'])
                 if today_ist >= s_time:
-                    # Time has passed, auto-allocate the bed
                     db.collection("bed_requests").document(req['ID']).update({
                         "status": "DONE",
                         "bed_no": req['scheduled_bed'],
@@ -229,9 +230,9 @@ for a in alerts:
 
 # --- 6. MANAGE PATIENT REQUESTS ---
 with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
-    pending = sum(1 for r in req_list if r.get('status') == "WAITING" and not r.get('bed_no'))
+    pending = sum(1 for r in req_list if r.get('status') in ["WAITING", "HOLD"] and not r.get('bed_no'))
     allotted = sum(1 for r in req_list if r.get('status') == "DONE")
-    st.columns(2)[0].metric("Pending", pending)
+    st.columns(2)[0].metric("Pending / Hold", pending)
     st.columns(2)[1].metric("Done", allotted)
     st.divider()
 
@@ -260,7 +261,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                        db_dr == p_dr_clean and 
                        r.get('shift_from') == p_fr and 
                        r.get('shift_to') == p_to and 
-                       r.get('status') == "WAITING"):
+                       r.get('status') in ["WAITING", "HOLD"]):
                         is_duplicate = True
                         break
                         
@@ -286,14 +287,15 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         status_filter = fc3.selectbox("📊 Filter by Status", ["ALL", "WAITING", "DONE", "CANCELLED", "HOLD", "GEN-WARD ALLOTTED"])
 
         st.divider()
-        h_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1, 1.5])
+        # Adjusted slightly to give the Status column just a tiny bit more room for the timer text
+        h_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1.2, 1.3])
         headers = ["S.N", "NAME", "CAT", "DR", "FROM", "TO", "REMARK", "BED", "STATUS", "ACTION"]
         for col, h in zip(h_cols, headers): col.write(f"**{h}**")
         
         for idx, r in enumerate(req_list):
             current_status = r.get('status', 'WAITING')
             b_no = r.get('bed_no', '')
-            if b_no and current_status == "WAITING": current_status = "DONE"
+            if b_no and current_status in ["WAITING", "HOLD"]: current_status = "DONE"
 
             safe_name = str(r.get('name') or "").lower()
             name_match = sq in safe_name
@@ -303,18 +305,64 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             if not (name_match and room_match and status_match):
                 continue
             
-            r_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1, 1.5])
+            r_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1.2, 1.3])
             r_cols[0].write(idx + 1); r_cols[1].write(r.get('name', '-')); r_cols[2].write(r.get('category', '-'))
             r_cols[3].write(r.get('dr_name', '-')); r_cols[4].write(r.get('shift_from', '-')); r_cols[5].write(r.get('shift_to', '-'))
             r_cols[6].write(r.get('remark', '-')); r_cols[7].write(b_no if b_no else "-")
             color_map = {"DONE": "green", "CANCELLED": "red", "GEN-WARD ALLOTTED": "blue", "HOLD": "purple"}
             color = color_map.get(current_status, "orange")
-            r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{current_status}</span>", unsafe_allow_html=True)
             
+            # --- LIVE JAVASCRIPT TIMER INJECTION IN STATUS COLUMN ---
+            if r.get('scheduled_time') and current_status in ["WAITING", "HOLD"]:
+                s_t = r.get('scheduled_time')
+                html_code = f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                <style>
+                    body {{
+                        margin: 0; padding: 0; font-family: sans-serif; font-size: 14px; 
+                        font-weight: bold; color: {color}; background: transparent; 
+                        overflow: hidden; text-align: left;
+                    }}
+                    .t {{
+                        font-size: 11px; color: #ffeb3b; font-weight: 600; 
+                        display: block; margin-top: 2px;
+                    }}
+                </style>
+                </head>
+                <body>
+                    <div id="main_{r['ID']}">{current_status}</div>
+                    <script>
+                        const end = new Date("{s_t}").getTime();
+                        const el = document.getElementById("main_{r['ID']}");
+                        const timer = setInterval(() => {{
+                            const dist = end - new Date().getTime();
+                            if (dist < 0) {{
+                                clearInterval(timer);
+                                el.innerHTML = "{current_status}<br><span class='t'>⏳ Auto-Allot Ready!</span>";
+                            }} else {{
+                                const h = Math.floor((dist % (1000*60*60*24)) / (1000*60*60));
+                                const m = Math.floor((dist % (1000*60*60)) / (1000*60));
+                                const s = Math.floor((dist % (1000*60)) / 1000);
+                                el.innerHTML = "{current_status}<br><span class='t'>⏳ " + h + "h " + m + "m " + s + "s</span>";
+                            }}
+                        }}, 1000);
+                    </script>
+                </body>
+                </html>
+                """
+                with r_cols[8]:
+                    components.html(html_code, height=45)
+            else:
+                r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{current_status}</span>", unsafe_allow_html=True)
+            
+            # ACTION / SLIP BUTTON
             if current_status == "DONE":
                 slip = f"""====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r.get('name', '')}\n------------------------------------\nBED:  {b_no}\n===================================="""
                 r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r.get('name', 'Patient')}.txt", key=f"rec_{r['ID']}")
                 
+            # TIMESTAMP RENDERING
             ts = r.get('timestamp')
             if ts:
                 if hasattr(ts, 'tzinfo') and ts.tzinfo is None: ts = pytz.utc.localize(ts)
@@ -322,23 +370,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                 ts_str = ts_ist.strftime('%d/%m/%Y %I:%M:%S %p')
             else: ts_str = "-"
             
-            # --- TIMER COUNTDOWN DISPLAY ---
-            sched_str = ""
-            if r.get('scheduled_time') and current_status == "WAITING":
-                try:
-                    s_t = datetime.fromisoformat(r.get('scheduled_time'))
-                    time_diff = s_t - today_ist
-                    if time_diff.total_seconds() > 0:
-                        hours, remainder = divmod(time_diff.total_seconds(), 3600)
-                        minutes, seconds = divmod(remainder, 60)
-                        countdown = f"{int(hours)}h {int(minutes)}m {int(seconds)}s"
-                        sched_str = f" | ⏳ Auto-Allot in: <b style='color: #ffeb3b;'>{countdown}</b> (Target Bed: {r.get('scheduled_bed')})"
-                    else:
-                        sched_str = f" | ⏳ Processing Auto-Allotment for Bed {r.get('scheduled_bed')}..."
-                except:
-                    pass
-
-            st.markdown(f"<div style='font-size: 11px; color: rgba(255,255,255,0.7); margin-left: 35px; margin-top: -12px; margin-bottom: 12px;'>🕒 Entry Timestamp (IST): <b>{ts_str}</b><span style='color: #00e5ff;'>{sched_str}</span></div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size: 11px; color: rgba(255,255,255,0.7); margin-left: 35px; margin-top: -12px; margin-bottom: 12px;'>🕒 Entry Timestamp (IST): <b>{ts_str}</b></div>", unsafe_allow_html=True)
 
 # --- PDF CONSENT FORM PANEL ---
 st.subheader("📝 ADMISSION & SHIFTING CONSENT FORMS (PDF)")
@@ -417,11 +449,11 @@ with st.sidebar:
                     if k in st.session_state: del st.session_state[k]
                 st.rerun()
 
-        # --- NEW: SIDEBAR AUTO-ALLOTMENT SCHEDULER ---
+        # --- NEW: SIDEBAR AUTO-ALLOTMENT SCHEDULER (NOW INCLUDES HOLD PATIENTS) ---
         st.divider(); st.subheader("⏳ Schedule Auto-Allotment")
-        waiting_patients = [r.get('name', '') for r in req_list if r.get('status') == 'WAITING']
+        waiting_patients = [r.get('name', '') for r in req_list if r.get('status') in ['WAITING', 'HOLD']]
         if waiting_patients:
-            sched_p = st.selectbox("Select Waiting Patient", waiting_patients, key="sched_p_sel")
+            sched_p = st.selectbox("Select Waiting/Hold Patient", waiting_patients, key="sched_p_sel")
             sched_b = st.selectbox("Select Target Bed", all_bed_ids, key="sched_b_sel")
             sched_t = st.time_input("Scheduled Auto-Allot Time", value=today_ist.time(), key="sched_t_input")
             
@@ -438,7 +470,7 @@ with st.sidebar:
                 if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                 st.rerun()
         else:
-            st.info("No waiting patients available to schedule.")
+            st.info("No waiting or hold patients available to schedule.")
 
         st.divider(); st.subheader("📝 Entry Modification")
         if req_list:
