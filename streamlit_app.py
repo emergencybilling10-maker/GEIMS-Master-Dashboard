@@ -157,18 +157,44 @@ if db:
                 if hasattr(ts, 'tzinfo') and ts.tzinfo is None:
                     ts = pytz.utc.localize(ts)
                 data['timestamp'] = ts
-            # Fixed universally compatible dict merge logic
             raw_reqs.append({**data, 'ID': r.id}) 
             
         st.session_state.cached_req_list = sorted(raw_reqs, key=lambda x: (x.get('position', 999), x.get('timestamp', today_ist)))
         
         book_stream = db.collection("future_bookings").order_by("book_date", direction=firestore.Query.ASCENDING).stream()
-        # Fixed universally compatible dict merge logic
         st.session_state.cached_book_list = [{**b.to_dict(), 'ID': b.id} for b in book_stream]
         
     live_data = st.session_state.cached_live_data
     req_list = st.session_state.cached_req_list
     book_list = st.session_state.cached_book_list
+
+    # --- AUTO-ALLOTMENT CHECKER (Executes naturally on interaction) ---
+    needs_rerun = False
+    for req in req_list:
+        if req.get('status') == "WAITING" and req.get('scheduled_time') and req.get('scheduled_bed'):
+            try:
+                s_time = datetime.fromisoformat(req['scheduled_time'])
+                if today_ist >= s_time:
+                    # Time has passed, auto-allocate the bed
+                    db.collection("bed_requests").document(req['ID']).update({
+                        "status": "DONE",
+                        "bed_no": req['scheduled_bed'],
+                        "scheduled_time": "", 
+                        "scheduled_bed": ""
+                    })
+                    db.collection("beds").document(req['scheduled_bed']).set({
+                        "status": "ALLOTTED", 
+                        "patient": req.get('name', 'Auto-Allotted')
+                    })
+                    needs_rerun = True
+            except Exception as e:
+                pass
+
+    if needs_rerun:
+        for key in ['cached_live_data', 'cached_req_list']:
+            if key in st.session_state: del st.session_state[key]
+        st.rerun()
+
 else:
     st.error("Database Connection Failed."); st.stop()
 
@@ -218,16 +244,14 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         p_fr = c2.selectbox("SHIFT FROM", ["CCU", "EMERGENCY", "DELUXE", "PVT", "SEMI PVT", "HDU", "OPD", "ICU", "WARD", "LR", "OTHER"])
         p_to = c2.selectbox("SHIFTING TO", ["DELUXE", "PRIVATE", "SEMI-PRIVATE", "GEN-WARD"])
         rem = c2.text_input("REMARK")
-        
-        if st.form_submit_button("Submit Request"):
+
+        if st.form_submit_button("Submit Request (Standard Waiting)"):
             if p_name:
                 p_name_clean = p_name.strip().lower()
-                # Added safe conversion to avoid NoneType errors
                 p_dr_clean = str(dr_name or "").strip().lower() 
                 is_duplicate = False
                 
                 for r in req_list:
-                    # Added safe conversion for db values to avoid crashes if fields are null
                     db_name = str(r.get('name') or "").strip().lower()
                     db_dr = str(r.get('dr_name') or "").strip().lower()
                     
@@ -256,7 +280,6 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
     if req_list:
         st.divider()
         
-        # --- NEW FILTER CONTROLS ---
         fc1, fc2, fc3 = st.columns(3)
         sq = fc1.text_input("🔍 Search Patient Name", "").lower()
         shift_filter = fc2.selectbox("📂 Filter by Room Preference (SHIFT TO)", ["ALL", "DELUXE", "PRIVATE", "SEMI-PRIVATE", "GEN-WARD"])
@@ -272,7 +295,6 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             b_no = r.get('bed_no', '')
             if b_no and current_status == "WAITING": current_status = "DONE"
 
-            # Applying the Filters safely
             safe_name = str(r.get('name') or "").lower()
             name_match = sq in safe_name
             room_match = (shift_filter == "ALL") or (r.get('shift_to') == shift_filter)
@@ -288,6 +310,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             color_map = {"DONE": "green", "CANCELLED": "red", "GEN-WARD ALLOTTED": "blue", "HOLD": "purple"}
             color = color_map.get(current_status, "orange")
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{current_status}</span>", unsafe_allow_html=True)
+            
             if current_status == "DONE":
                 slip = f"""====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r.get('name', '')}\n------------------------------------\nBED:  {b_no}\n===================================="""
                 r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r.get('name', 'Patient')}.txt", key=f"rec_{r['ID']}")
@@ -298,7 +321,24 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                 ts_ist = ts.astimezone(ist_tz)
                 ts_str = ts_ist.strftime('%d/%m/%Y %I:%M:%S %p')
             else: ts_str = "-"
-            st.markdown(f"<div style='font-size: 11px; color: rgba(255,255,255,0.7); margin-left: 35px; margin-top: -12px; margin-bottom: 12px;'>🕒 Entry Timestamp (IST): <b>{ts_str}</b></div>", unsafe_allow_html=True)
+            
+            # --- TIMER COUNTDOWN DISPLAY ---
+            sched_str = ""
+            if r.get('scheduled_time') and current_status == "WAITING":
+                try:
+                    s_t = datetime.fromisoformat(r.get('scheduled_time'))
+                    time_diff = s_t - today_ist
+                    if time_diff.total_seconds() > 0:
+                        hours, remainder = divmod(time_diff.total_seconds(), 3600)
+                        minutes, seconds = divmod(remainder, 60)
+                        countdown = f"{int(hours)}h {int(minutes)}m {int(seconds)}s"
+                        sched_str = f" | ⏳ Auto-Allot in: <b style='color: #ffeb3b;'>{countdown}</b> (Target Bed: {r.get('scheduled_bed')})"
+                    else:
+                        sched_str = f" | ⏳ Processing Auto-Allotment for Bed {r.get('scheduled_bed')}..."
+                except:
+                    pass
+
+            st.markdown(f"<div style='font-size: 11px; color: rgba(255,255,255,0.7); margin-left: 35px; margin-top: -12px; margin-bottom: 12px;'>🕒 Entry Timestamp (IST): <b>{ts_str}</b><span style='color: #00e5ff;'>{sched_str}</span></div>", unsafe_allow_html=True)
 
 # --- PDF CONSENT FORM PANEL ---
 st.subheader("📝 ADMISSION & SHIFTING CONSENT FORMS (PDF)")
@@ -369,7 +409,7 @@ with st.sidebar:
             if st.button("Apply Alteration"):
                 p_data = next(r for r in req_list if r.get('name') == alt_p)
                 old_bed = p_data.get('bed_no')
-                db.collection("bed_requests").document(p_data['ID']).update({"status": new_s, "bed_no": new_b})
+                db.collection("bed_requests").document(p_data['ID']).update({"status": new_s, "bed_no": new_b, "scheduled_time": "", "scheduled_bed": ""})
                 if old_bed in all_bed_ids: db.collection("beds").document(old_bed).set({"status": "VACANT", "patient": ""})
                 if new_b and new_b in all_bed_ids: db.collection("beds").document(new_b).set({"status": "ALLOTTED", "patient": alt_p})
                 st.success(f"Updated {alt_p} successfully.")
@@ -377,15 +417,39 @@ with st.sidebar:
                     if k in st.session_state: del st.session_state[k]
                 st.rerun()
 
+        # --- NEW: SIDEBAR AUTO-ALLOTMENT SCHEDULER ---
+        st.divider(); st.subheader("⏳ Schedule Auto-Allotment")
+        waiting_patients = [r.get('name', '') for r in req_list if r.get('status') == 'WAITING']
+        if waiting_patients:
+            sched_p = st.selectbox("Select Waiting Patient", waiting_patients, key="sched_p_sel")
+            sched_b = st.selectbox("Select Target Bed", all_bed_ids, key="sched_b_sel")
+            sched_t = st.time_input("Scheduled Auto-Allot Time", value=today_ist.time(), key="sched_t_input")
+            
+            if st.button("Set Auto-Allot Timer"):
+                p_data = next(r for r in req_list if r.get('name') == sched_p)
+                s_dt = datetime.combine(today_ist.date(), sched_t)
+                s_dt = ist_tz.localize(s_dt)
+                
+                db.collection("bed_requests").document(p_data['ID']).update({
+                    "scheduled_time": s_dt.isoformat(),
+                    "scheduled_bed": sched_b
+                })
+                st.success(f"Timer set for {sched_p} on Bed {sched_b}.")
+                if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
+                st.rerun()
+        else:
+            st.info("No waiting patients available to schedule.")
+
         st.divider(); st.subheader("📝 Entry Modification")
         if req_list:
             target = st.selectbox("Select Patient to Edit", [r.get('name', '') for r in req_list], key="sb_mod")
-            action = st.radio("Action", ["Edit Remark", "Mark as CANCELLED", "Delete Entry"], horizontal=True)
-            new_val = st.text_input("New Remark")
+            action = st.radio("Action", ["Edit Remark", "Mark as CANCELLED", "Delete Entry", "Clear Auto-Timer"], horizontal=True)
+            new_val = st.text_input("New Remark (If Editing)")
             if st.button("Confirm Modification"):
                 r_id = next(r['ID'] for r in req_list if r.get('name') == target)
                 if action == "Delete Entry": db.collection("bed_requests").document(r_id).delete()
-                elif action == "Mark as CANCELLED": db.collection("bed_requests").document(r_id).update({"status": "CANCELLED", "bed_no": ""})
+                elif action == "Mark as CANCELLED": db.collection("bed_requests").document(r_id).update({"status": "CANCELLED", "bed_no": "", "scheduled_time": "", "scheduled_bed": ""})
+                elif action == "Clear Auto-Timer": db.collection("bed_requests").document(r_id).update({"scheduled_time": "", "scheduled_bed": ""})
                 else: db.collection("bed_requests").document(r_id).update({"remark": new_val})
                 if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                 st.rerun()
