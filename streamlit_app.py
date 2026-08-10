@@ -157,44 +157,18 @@ if db:
                 if hasattr(ts, 'tzinfo') and ts.tzinfo is None:
                     ts = pytz.utc.localize(ts)
                 data['timestamp'] = ts
+            # Fixed universally compatible dict merge logic
             raw_reqs.append({**data, 'ID': r.id}) 
             
         st.session_state.cached_req_list = sorted(raw_reqs, key=lambda x: (x.get('position', 999), x.get('timestamp', today_ist)))
         
         book_stream = db.collection("future_bookings").order_by("book_date", direction=firestore.Query.ASCENDING).stream()
+        # Fixed universally compatible dict merge logic
         st.session_state.cached_book_list = [{**b.to_dict(), 'ID': b.id} for b in book_stream]
         
     live_data = st.session_state.cached_live_data
     req_list = st.session_state.cached_req_list
     book_list = st.session_state.cached_book_list
-
-    # --- AUTO-ALLOTMENT CHECKER ---
-    needs_rerun = False
-    for req in req_list:
-        if req.get('status') == "WAITING" and req.get('scheduled_time') and req.get('scheduled_bed'):
-            try:
-                s_time = datetime.fromisoformat(req['scheduled_time'])
-                if today_ist >= s_time:
-                    # Time has passed, auto-allocate the bed
-                    db.collection("bed_requests").document(req['ID']).update({
-                        "status": "DONE",
-                        "bed_no": req['scheduled_bed'],
-                        "scheduled_time": "", 
-                        "scheduled_bed": ""
-                    })
-                    db.collection("beds").document(req['scheduled_bed']).set({
-                        "status": "ALLOTTED", 
-                        "patient": req.get('name', 'Auto-Allotted')
-                    })
-                    needs_rerun = True
-            except Exception as e:
-                pass
-
-    if needs_rerun:
-        for key in ['cached_live_data', 'cached_req_list']:
-            if key in st.session_state: del st.session_state[key]
-        st.rerun()
-
 else:
     st.error("Database Connection Failed."); st.stop()
 
@@ -245,20 +219,15 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         p_to = c2.selectbox("SHIFTING TO", ["DELUXE", "PRIVATE", "SEMI-PRIVATE", "GEN-WARD"])
         rem = c2.text_input("REMARK")
         
-        st.markdown("---")
-        st.markdown("### 🛏️ Auto-Allotment Configuration")
-        ac1, ac2, ac3 = st.columns(3)
-        allot_mode = ac1.radio("Processing Mode", ["Standard (Waiting)", "Immediate Allotment", "Scheduled Timer"])
-        sel_bed = ac2.selectbox("Target Bed (If Immediate/Scheduled)", [""] + all_bed_ids)
-        sched_time = ac3.time_input("Scheduled Auto-Allot Time", value=today_ist.time())
-
         if st.form_submit_button("Submit Request"):
             if p_name:
                 p_name_clean = p_name.strip().lower()
+                # Added safe conversion to avoid NoneType errors
                 p_dr_clean = str(dr_name or "").strip().lower() 
                 is_duplicate = False
                 
                 for r in req_list:
+                    # Added safe conversion for db values to avoid crashes if fields are null
                     db_name = str(r.get('name') or "").strip().lower()
                     db_dr = str(r.get('dr_name') or "").strip().lower()
                     
@@ -274,42 +243,20 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                 if is_duplicate:
                     st.warning("⚠️ Duplicate Entry: An identical shifting request already exists in the list.")
                 else:
-                    new_status = "WAITING"
-                    new_bed = ""
-                    sched_dt_str = ""
-                    sched_bed = ""
-
-                    # Check Allotment Logic Configuration
-                    if allot_mode == "Immediate Allotment" and sel_bed:
-                        new_status = "DONE"
-                        new_bed = sel_bed
-                    elif allot_mode == "Scheduled Timer" and sel_bed:
-                        s_dt = datetime.combine(today_ist.date(), sched_time)
-                        s_dt = ist_tz.localize(s_dt)
-                        sched_dt_str = s_dt.isoformat()
-                        sched_bed = sel_bed
-
                     db.collection("bed_requests").add({
                         "timestamp": datetime.now(ist_tz), 
                         "name": p_name, "category": p_cat,
                         "dr_name": dr_name, "shift_from": p_fr, "shift_to": p_to, 
-                        "remark": rem, "bed_no": new_bed,
-                        "status": new_status, "date": today_date_str, "position": 999,
-                        "scheduled_time": sched_dt_str,
-                        "scheduled_bed": sched_bed
+                        "remark": rem, "bed_no": "",
+                        "status": "WAITING", "date": today_date_str, "position": 999
                     })
-
-                    # Auto update beds table if Immediate
-                    if allot_mode == "Immediate Allotment" and sel_bed:
-                        db.collection("beds").document(sel_bed).set({"status": "ALLOTTED", "patient": p_name})
-                        if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
-
                     if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                     st.rerun()
 
     if req_list:
         st.divider()
         
+        # --- NEW FILTER CONTROLS ---
         fc1, fc2, fc3 = st.columns(3)
         sq = fc1.text_input("🔍 Search Patient Name", "").lower()
         shift_filter = fc2.selectbox("📂 Filter by Room Preference (SHIFT TO)", ["ALL", "DELUXE", "PRIVATE", "SEMI-PRIVATE", "GEN-WARD"])
@@ -325,6 +272,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             b_no = r.get('bed_no', '')
             if b_no and current_status == "WAITING": current_status = "DONE"
 
+            # Applying the Filters safely
             safe_name = str(r.get('name') or "").lower()
             name_match = sq in safe_name
             room_match = (shift_filter == "ALL") or (r.get('shift_to') == shift_filter)
@@ -340,7 +288,6 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             color_map = {"DONE": "green", "CANCELLED": "red", "GEN-WARD ALLOTTED": "blue", "HOLD": "purple"}
             color = color_map.get(current_status, "orange")
             r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{current_status}</span>", unsafe_allow_html=True)
-            
             if current_status == "DONE":
                 slip = f"""====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r.get('name', '')}\n------------------------------------\nBED:  {b_no}\n===================================="""
                 r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r.get('name', 'Patient')}.txt", key=f"rec_{r['ID']}")
@@ -351,24 +298,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                 ts_ist = ts.astimezone(ist_tz)
                 ts_str = ts_ist.strftime('%d/%m/%Y %I:%M:%S %p')
             else: ts_str = "-"
-            
-            # --- TIMER COUNTDOWN DISPLAY ---
-            sched_str = ""
-            if r.get('scheduled_time') and current_status == "WAITING":
-                try:
-                    s_t = datetime.fromisoformat(r['scheduled_time'])
-                    time_diff = s_t - today_ist
-                    if time_diff.total_seconds() > 0:
-                        hours, remainder = divmod(time_diff.total_seconds(), 3600)
-                        minutes, seconds = divmod(remainder, 60)
-                        countdown = f"{int(hours)}h {int(minutes)}m {int(seconds)}s"
-                        sched_str = f" | ⏳ Auto-Allot in: <b style='color: #ffeb3b;'>{countdown}</b> (Target Bed: {r.get('scheduled_bed')})"
-                    else:
-                        sched_str = f" | ⏳ Processing Auto-Allotment for Bed {r.get('scheduled_bed')}..."
-                except:
-                    pass
-
-            st.markdown(f"<div style='font-size: 11px; color: rgba(255,255,255,0.7); margin-left: 35px; margin-top: -12px; margin-bottom: 12px;'>🕒 Entry Timestamp (IST): <b>{ts_str}</b><span style='color: #00e5ff;'>{sched_str}</span></div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size: 11px; color: rgba(255,255,255,0.7); margin-left: 35px; margin-top: -12px; margin-bottom: 12px;'>🕒 Entry Timestamp (IST): <b>{ts_str}</b></div>", unsafe_allow_html=True)
 
 # --- PDF CONSENT FORM PANEL ---
 st.subheader("📝 ADMISSION & SHIFTING CONSENT FORMS (PDF)")
