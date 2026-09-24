@@ -7,27 +7,45 @@ from datetime import datetime, timedelta
 import pytz
 import io
 import streamlit.components.v1 as components
+import requests
+from streamlit_autorefresh import st_autorefresh
 
-# Page Config
+# --- PAGE CONFIG ---
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
+
+# --- 0. AUTO-REFRESH CONFIGURATION (30 SECONDS) ---
+st_autorefresh(interval=30000, key="bed_dashboard_autorefresh")
+
+# --- NTFY MOBILE PUSH NOTIFICATION HELPER ---
+NTFY_TOPIC = "geims-bed-tracker-alerts-99"
+
+def send_ntfy_notification(title, message, priority="default", tags="hospital,hospital_bed"):
+    try:
+        requests.post(
+            f"https://ntfy.sh/{NTFY_TOPIC}",
+            data=message.encode('utf-8'),
+            headers={
+                "Title": title,
+                "Priority": priority,
+                "Tags": tags
+            },
+            timeout=5
+        )
+    except Exception as e:
+        pass
 
 # --- QUANTUM FLUID + ULTRA-GLASS 3D INTERFACE ---
 st.markdown("""
 <style>
-    /* HIDE STREAMLIT frontend GITHUB CODE DISCOVERY LINK DEPLOY BUTTON OVERLAY */
     .stAppDeployButton, a[href*="github.com"], [data-testid="stSourceCodeLink"] {
         display: none !important;
     }
-
-    /* 1. THE MOVING BACKGROUND: SHARP & VIVID */
     [data-testid="stAppViewContainer"] {
         background-image: url("https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExeTNqazRwZDFlMjcwaTl6OHlvY21ucGd3YWoxaWYycjVsaG1jeGhmbyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/U4ExkAvRpVQGB0NMe0/giphy.gif") !important;
         background-size: cover !important;
         background-position: center !important;
         background-attachment: fixed !important;
     }
-
-    /* 2. BALANCED BRIGHTNESS OVERLAY */
     [data-testid="stAppViewContainer"]::before {
         content: "";
         position: fixed;
@@ -36,8 +54,6 @@ st.markdown("""
         z-index: 0;
         pointer-events: none;
     }
-
-    /* 3. PREMIUM 3D TACTILE GLASS BUTTONS */
     div.stButton > button {
         background: rgba(255, 255, 255, 0.12) !important;
         color: #ffffff !important;
@@ -51,22 +67,17 @@ st.markdown("""
         transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
         backdrop-filter: blur(12px);
     }
-
     div.stButton > button:hover {
         background: rgba(255, 255, 255, 0.22) !important;
         transform: translateY(-2px);
         box-shadow: 0 7px 0px rgba(0,0,0,0.5), 0 15px 25px rgba(0, 229, 255, 0.4) !important;
     }
-
-    /* 3D "Mechanical Click" */
     div.stButton > button:active {
         transform: translateY(5px) !important;
         box-shadow: 0 0px 0px transparent !important;
         background: rgba(0, 229, 255, 0.2) !important;
         color: #00e5ff !important;
     }
-
-    /* 4. ULTRA-TRANSPARENT CRYSTAL PANELS (Glassmorphism) */
     [data-testid="stMetric"], .stForm, .stExpander {
         background: rgba(255, 255, 255, 0.06) !important; 
         backdrop-filter: blur(28px) saturate(180%) !important;
@@ -76,8 +87,6 @@ st.markdown("""
         z-index: 1;
         margin-bottom: 25px !important;
     }
-
-    /* 5. TYPOGRAPHY: SHARP & READABLE */
     h1 {
         font-weight: 900 !important;
         color: #ffffff !important;
@@ -85,44 +94,41 @@ st.markdown("""
         text-align: center;
         letter-spacing: 2px;
     }
-
     [data-testid="stMetricValue"] {
         color: #ffffff !important;
         text-shadow: 0 0 20px rgba(0, 229, 255, 0.6);
         font-weight: 800 !important;
     }
-    
     [data-testid="stMetricLabel"] {
         color: rgba(255, 255, 255, 0.85) !important;
         font-weight: 600 !important;
         text-transform: uppercase;
         font-size: 0.85rem !important;
     }
-
-    /* Sidebar Glass UI */
     [data-testid="stSidebar"] {
         background-color: rgba(0, 5, 15, 0.85) !important;
         backdrop-filter: blur(24px);
         border-right: 1px solid rgba(255, 255, 255, 0.15);
     }
-
-    /* Professional Scrollbar */
     ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.25); border-radius: 10px; }
     ::-webkit-scrollbar-track { background: transparent; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 1. SECURE DATABASE CONNECTION ---
+# --- 1. SECURE DATABASE CONNECTION (SAFE FALLBACK) ---
 @st.cache_resource
 def get_db():
     if "textkey" in st.secrets:
         try:
-            key_dict = json.loads(st.secrets["textkey"])
+            raw_key = st.secrets["textkey"]
+            key_dict = json.loads(raw_key) if isinstance(raw_key, str) else dict(raw_key)
             creds = service_account.Credentials.from_service_account_info(key_dict)
             return firestore.Client(credentials=creds)
         except Exception as e:
-            st.error(f"Database Connection Error: {e}")
+            st.error(f"⚠️ Firebase Initialization Error: {e}")
+            return None
+    st.error("⚠️ Missing 'textkey' in Streamlit Secrets.")
     return None
 
 db = get_db()
@@ -170,7 +176,6 @@ if db:
     book_list = st.session_state.cached_book_list
 
     # --- AUTO-ALLOTMENT CHECKER ---
-    # Now perfectly accepts HOLD status alongside WAITING for automatic execution
     needs_rerun = False
     for req in req_list:
         if req.get('status') in ["WAITING", "HOLD"] and req.get('scheduled_time') and req.get('scheduled_bed'):
@@ -223,6 +228,14 @@ for a in alerts:
                 "bed_no": "", "status": "WAITING", 
                 "date": today_date_str, "position": 999
             })
+            
+            send_ntfy_notification(
+                title="🚨 Booking Admitted",
+                message=f"Patient: {a.get('name')}\nCategory: {a.get('category', 'OTHER')}\nDoctor: {a.get('dr')}",
+                priority="high",
+                tags="inbox_tray,hospital"
+            )
+            
             db.collection("future_bookings").document(a['ID']).delete()
             for k in ['cached_req_list', 'cached_book_list']: 
                 if k in st.session_state: del st.session_state[k]
@@ -275,6 +288,14 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                         "remark": rem, "bed_no": "",
                         "status": "WAITING", "date": today_date_str, "position": 999
                     })
+                    
+                    send_ntfy_notification(
+                        title="🏥 New Shifting Request",
+                        message=f"Patient: {p_name}\nCategory: {p_cat}\nDoctor: {dr_name}\nShift: {p_fr} ➡️ {p_to}",
+                        priority="high",
+                        tags="bell,bed"
+                    )
+
                     if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                     st.rerun()
 
@@ -287,7 +308,6 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         status_filter = fc3.selectbox("📊 Filter by Status", ["ALL", "WAITING", "DONE", "CANCELLED", "HOLD", "GEN-WARD ALLOTTED"])
 
         st.divider()
-        # Adjusted slightly to give the Status column just a tiny bit more room for the timer text
         h_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1.2, 1.3])
         headers = ["S.N", "NAME", "CAT", "DR", "FROM", "TO", "REMARK", "BED", "STATUS", "ACTION"]
         for col, h in zip(h_cols, headers): col.write(f"**{h}**")
@@ -312,7 +332,6 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             color_map = {"DONE": "green", "CANCELLED": "red", "GEN-WARD ALLOTTED": "blue", "HOLD": "purple"}
             color = color_map.get(current_status, "orange")
             
-            # --- LIVE JAVASCRIPT TIMER INJECTION IN STATUS COLUMN ---
             if r.get('scheduled_time') and current_status in ["WAITING", "HOLD"]:
                 s_t = r.get('scheduled_time')
                 html_code = f"""
@@ -357,12 +376,10 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
             else:
                 r_cols[8].markdown(f"<span style='color:{color}; font-weight:bold;'>{current_status}</span>", unsafe_allow_html=True)
             
-            # ACTION / SLIP BUTTON
             if current_status == "DONE":
                 slip = f"""====================================\n      G.E.I.M.S (Bed Management)\n      BED ALLOTMENT SLIP\n====================================\nDATE: {today_date_str}\nPATIENT: {r.get('name', '')}\n------------------------------------\nBED:  {b_no}\n===================================="""
                 r_cols[9].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r.get('name', 'Patient')}.txt", key=f"rec_{r['ID']}")
                 
-            # TIMESTAMP RENDERING
             ts = r.get('timestamp')
             if ts:
                 if hasattr(ts, 'tzinfo') and ts.tzinfo is None: ts = pytz.utc.localize(ts)
@@ -397,6 +414,14 @@ with st.sidebar:
             f_date = st.date_input("Booking Date"); f_room = st.text_input("Pre-decided Bed ID"); f_cat = st.selectbox("Category", ["SELF PAY", "OTHER"]); f_pref = st.selectbox("Bed Preference", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
             if st.form_submit_button("Save"):
                 db.collection("future_bookings").add({"name": f_name, "uhid": f_uhid, "dr": f_dr, "book_date": f_date.strftime('%Y-%m-%d'), "category": f_cat, "preference": f_pref, "pref_bed": f_room})
+                
+                send_ntfy_notification(
+                    title="📅 New Future Booking",
+                    message=f"Patient: {f_name}\nDate: {f_date.strftime('%d/%m/%Y')}\nDoctor: {f_dr}",
+                    priority="default",
+                    tags="calendar,hospital"
+                )
+
                 if 'cached_book_list' in st.session_state: del st.session_state['cached_book_list']
                 st.rerun()
 
@@ -449,7 +474,6 @@ with st.sidebar:
                     if k in st.session_state: del st.session_state[k]
                 st.rerun()
 
-        # --- NEW: SIDEBAR AUTO-ALLOTMENT SCHEDULER (NOW INCLUDES HOLD PATIENTS) ---
         st.divider(); st.subheader("⏳ Schedule Auto-Allotment")
         waiting_patients = [r.get('name', '') for r in req_list if r.get('status') in ['WAITING', 'HOLD']]
         if waiting_patients:
