@@ -13,25 +13,31 @@ from streamlit_autorefresh import st_autorefresh
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
 
-# --- 0. AUTO-REFRESH CONFIGURATION (30 SECONDS) ---
-st_autorefresh(interval=30000, key="bed_dashboard_autorefresh")
+# --- 0. AUTO-REFRESH & CACHE INVALIDATION (30 SECONDS) ---
+refresh_count = st_autorefresh(interval=30000, key="bed_dashboard_autorefresh")
+
+if "last_refresh_count" not in st.session_state or st.session_state.last_refresh_count != refresh_count:
+    st.session_state.last_refresh_count = refresh_count
+    for key in ['cached_live_data', 'cached_req_list', 'cached_book_list']:
+        if key in st.session_state:
+            del st.session_state[key]
 
 # --- NTFY MOBILE PUSH NOTIFICATION HELPER ---
 NTFY_TOPIC = "geims-bed-tracker-alerts-99"
 
-def send_ntfy_notification(title, message, priority="default", tags="hospital,hospital_bed"):
+def send_ntfy_notification(title, message, priority="urgent", tags="hospital,warning"):
     try:
         requests.post(
             f"https://ntfy.sh/{NTFY_TOPIC}",
             data=message.encode('utf-8'),
             headers={
                 "Title": title,
-                "Priority": priority,
+                "Priority": priority,  # 'urgent' forces loud sound and vibration
                 "Tags": tags
             },
             timeout=5
         )
-    except Exception as e:
+    except Exception:
         pass
 
 # --- QUANTUM FLUID + ULTRA-GLASS 3D INTERFACE ---
@@ -116,7 +122,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 1. SECURE DATABASE CONNECTION (SAFE FALLBACK) ---
+# --- 1. SECURE DATABASE CONNECTION ---
 @st.cache_resource
 def get_db():
     if "textkey" in st.secrets:
@@ -152,6 +158,7 @@ if db:
     if 'cached_live_data' not in st.session_state or 'cached_req_list' not in st.session_state:
         status_doc = db.collection("settings").document("dashboard_status").get()
         st.session_state.is_live = status_doc.to_dict().get("status", "LIVE") if status_doc.exists else "LIVE"
+        
         docs = db.collection("beds").stream()
         st.session_state.cached_live_data = {doc.id: doc.to_dict() for doc in docs}
         
@@ -193,7 +200,7 @@ if db:
                         "patient": req.get('name', 'Auto-Allotted')
                     })
                     needs_rerun = True
-            except Exception as e:
+            except Exception:
                 pass
 
     if needs_rerun:
@@ -232,7 +239,7 @@ for a in alerts:
             send_ntfy_notification(
                 title="🚨 Booking Admitted",
                 message=f"Patient: {a.get('name')}\nCategory: {a.get('category', 'OTHER')}\nDoctor: {a.get('dr')}",
-                priority="high",
+                priority="urgent",
                 tags="inbox_tray,hospital"
             )
             
@@ -292,7 +299,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                     send_ntfy_notification(
                         title="🏥 New Shifting Request",
                         message=f"Patient: {p_name}\nCategory: {p_cat}\nDoctor: {dr_name}\nShift: {p_fr} ➡️ {p_to}",
-                        priority="high",
+                        priority="urgent",
                         tags="bell,bed"
                     )
 
@@ -418,7 +425,7 @@ with st.sidebar:
                 send_ntfy_notification(
                     title="📅 New Future Booking",
                     message=f"Patient: {f_name}\nDate: {f_date.strftime('%d/%m/%Y')}\nDoctor: {f_dr}",
-                    priority="default",
+                    priority="urgent",
                     tags="calendar,hospital"
                 )
 
