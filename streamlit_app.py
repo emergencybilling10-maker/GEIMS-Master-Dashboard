@@ -7,32 +7,9 @@ from datetime import datetime, timedelta
 import pytz
 import io
 import streamlit.components.v1 as components
-import requests
-from streamlit_autorefresh import st_autorefresh
 
 # Page Config
 st.set_page_config(page_title="GEIMS Master Bed Tracker", layout="wide")
-
-# --- 0. AUTO-REFRESH CONFIGURATION (30 SECONDS) ---
-st_autorefresh(interval=30000, key="bed_dashboard_autorefresh")
-
-# --- NTFY MOBILE PUSH NOTIFICATION HELPER ---
-NTFY_TOPIC = "geims-bed-tracker-alerts-99"  # Make sure this matches the topic you subscribed to on your phone!
-
-def send_ntfy_notification(title, message, priority="default", tags="hospital,hospital_bed"):
-    try:
-        requests.post(
-            f"https://ntfy.sh/{NTFY_TOPIC}",
-            data=message.encode('utf-8'),
-            headers={
-                "Title": title,
-                "Priority": priority,
-                "Tags": tags
-            },
-            timeout=5
-        )
-    except Exception as e:
-        pass  # Fails silently to not disrupt the app if internet drops momentarily
 
 # --- QUANTUM FLUID + ULTRA-GLASS 3D INTERFACE ---
 st.markdown("""
@@ -193,6 +170,7 @@ if db:
     book_list = st.session_state.cached_book_list
 
     # --- AUTO-ALLOTMENT CHECKER ---
+    # Now perfectly accepts HOLD status alongside WAITING for automatic execution
     needs_rerun = False
     for req in req_list:
         if req.get('status') in ["WAITING", "HOLD"] and req.get('scheduled_time') and req.get('scheduled_bed'):
@@ -245,15 +223,6 @@ for a in alerts:
                 "bed_no": "", "status": "WAITING", 
                 "date": today_date_str, "position": 999
             })
-            
-            # NOTIFICATION: Admitted Booking
-            send_ntfy_notification(
-                title="🚨 Booking Admitted",
-                message=f"Patient: {a.get('name')}\nCategory: {a.get('category', 'OTHER')}\nDoctor: {a.get('dr')}",
-                priority="high",
-                tags="inbox_tray,hospital"
-            )
-            
             db.collection("future_bookings").document(a['ID']).delete()
             for k in ['cached_req_list', 'cached_book_list']: 
                 if k in st.session_state: del st.session_state[k]
@@ -306,15 +275,6 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
                         "remark": rem, "bed_no": "",
                         "status": "WAITING", "date": today_date_str, "position": 999
                     })
-                    
-                    # NOTIFICATION: New Request
-                    send_ntfy_notification(
-                        title="🏥 New Shifting Request",
-                        message=f"Patient: {p_name}\nCategory: {p_cat}\nDoctor: {dr_name}\nShift: {p_fr} ➡️ {p_to}",
-                        priority="high",
-                        tags="bell,bed"
-                    )
-
                     if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                     st.rerun()
 
@@ -327,6 +287,7 @@ with st.expander("📋 MANAGE PATIENT REQUESTS", expanded=True):
         status_filter = fc3.selectbox("📊 Filter by Status", ["ALL", "WAITING", "DONE", "CANCELLED", "HOLD", "GEN-WARD ALLOTTED"])
 
         st.divider()
+        # Adjusted slightly to give the Status column just a tiny bit more room for the timer text
         h_cols = st.columns([0.5, 2, 1.5, 1.5, 1.5, 1.5, 2, 1, 1.2, 1.3])
         headers = ["S.N", "NAME", "CAT", "DR", "FROM", "TO", "REMARK", "BED", "STATUS", "ACTION"]
         for col, h in zip(h_cols, headers): col.write(f"**{h}**")
@@ -436,15 +397,6 @@ with st.sidebar:
             f_date = st.date_input("Booking Date"); f_room = st.text_input("Pre-decided Bed ID"); f_cat = st.selectbox("Category", ["SELF PAY", "OTHER"]); f_pref = st.selectbox("Bed Preference", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
             if st.form_submit_button("Save"):
                 db.collection("future_bookings").add({"name": f_name, "uhid": f_uhid, "dr": f_dr, "book_date": f_date.strftime('%Y-%m-%d'), "category": f_cat, "preference": f_pref, "pref_bed": f_room})
-                
-                # NOTIFICATION: New Future Booking
-                send_ntfy_notification(
-                    title="📅 New Future Booking",
-                    message=f"Patient: {f_name}\nDate: {f_date.strftime('%d/%m/%Y')}\nDoctor: {f_dr}",
-                    priority="default",
-                    tags="calendar,hospital"
-                )
-
                 if 'cached_book_list' in st.session_state: del st.session_state['cached_book_list']
                 st.rerun()
 
@@ -497,6 +449,7 @@ with st.sidebar:
                     if k in st.session_state: del st.session_state[k]
                 st.rerun()
 
+        # --- NEW: SIDEBAR AUTO-ALLOTMENT SCHEDULER (NOW INCLUDES HOLD PATIENTS) ---
         st.divider(); st.subheader("⏳ Schedule Auto-Allotment")
         waiting_patients = [r.get('name', '') for r in req_list if r.get('status') in ['WAITING', 'HOLD']]
         if waiting_patients:
