@@ -4,4 +4,3 @@ openpyxl
 google-cloud-firestore
 google-auth
 pytz
-pip install streamlit-autorefresh requests
