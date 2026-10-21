@@ -23,13 +23,13 @@ if "last_refresh_count" not in st.session_state or st.session_state.last_refresh
         if key in st.session_state:
             del st.session_state[key]
 
-# --- PRIORITY WEIGHTS & STYLING CONFIG ---
+# --- CLEAN MATTE PRIORITY CONFIG (NO GLOW) ---
 PRIORITY_CONFIG = {
-    "VIP":       {"weight": 1, "color": "#FFD700", "bg": "rgba(255, 215, 0, 0.14)",  "border": "rgba(255, 215, 0, 0.7)",  "glow": "0 0 18px rgba(255, 215, 0, 0.45)", "icon": "👑"},
-    "HWC":       {"weight": 2, "color": "#00E5FF", "bg": "rgba(0, 229, 255, 0.14)",  "border": "rgba(0, 229, 255, 0.7)",  "glow": "0 0 18px rgba(0, 229, 255, 0.45)", "icon": "⚕️"},
-    "GEU":       {"weight": 3, "color": "#00E676", "bg": "rgba(0, 230, 118, 0.14)",  "border": "rgba(0, 230, 118, 0.7)",  "glow": "0 0 18px rgba(0, 230, 118, 0.45)", "icon": "🏛️"},
-    "IMPORTANT": {"weight": 4, "color": "#FF5252", "bg": "rgba(255, 82, 82, 0.14)",  "border": "rgba(255, 82, 82, 0.7)",  "glow": "0 0 18px rgba(255, 82, 82, 0.45)", "icon": "🔥"},
-    "STANDARD":  {"weight": 5, "color": "#94A3B8", "bg": "rgba(15, 23, 42, 0.55)",   "border": "rgba(255, 255, 255, 0.15)", "glow": "none", "icon": "🔹"}
+    "VIP":       {"weight": 1, "color": "#F59E0B", "bg": "rgba(245, 158, 11, 0.12)", "border": "#F59E0B"},
+    "HWC":       {"weight": 2, "color": "#38BDF8", "bg": "rgba(56, 189, 248, 0.12)", "border": "#38BDF8"},
+    "GEU":       {"weight": 3, "color": "#10B981", "bg": "rgba(16, 185, 129, 0.12)", "border": "#10B981"},
+    "IMPORTANT": {"weight": 4, "color": "#F43F5E", "bg": "rgba(244, 63, 94, 0.12)",  "border": "#F43F5E"},
+    "STANDARD":  {"weight": 5, "color": "#94A3B8", "bg": "rgba(148, 163, 184, 0.1)", "border": "#475569"}
 }
 
 # --- NTFY MOBILE PUSH NOTIFICATION HELPER ---
@@ -50,14 +50,235 @@ def send_ntfy_notification(title, message, priority="urgent", tags="hospital,war
     except Exception:
         pass
 
-# --- QUANTUM FLUID + DARK CYBER-GLASS UI ---
+# --- ADVANCED PRINTABLE HTML RECEIPT GENERATOR (NO PRIORITY SHOWN) ---
+def generate_advanced_receipt_html(req_data, date_str, generated_time_str):
+    patient_name = req_data.get('name', '-')
+    uhid = req_data.get('uhid') or 'N/A'
+    category = req_data.get('category', '-')
+    dr_name = req_data.get('dr_name', '-')
+    shift_from = req_data.get('shift_from', '-')
+    shift_to = req_data.get('shift_to', '-')
+    bed_no = req_data.get('bed_no', '-')
+    remark = req_data.get('remark') or 'None'
+    slip_id = str(req_data.get('ID', '0000'))[:8].upper()
+
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Bed Allotment Receipt - {patient_name}</title>
+    <style>
+        @page {{ size: A5 landscape; margin: 10mm; }}
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f1f5f9;
+            color: #0f172a;
+            margin: 0;
+            padding: 25px;
+        }}
+        .receipt-card {{
+            max-width: 720px;
+            margin: 0 auto;
+            background: #ffffff;
+            border: 2px solid #1e293b;
+            border-radius: 8px;
+            overflow: hidden;
+        }}
+        .header {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #0f172a;
+            color: #ffffff;
+            padding: 16px 24px;
+            border-bottom: 3px solid #2563eb;
+        }}
+        .header-left h1 {{
+            margin: 0;
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }}
+        .header-left p {{
+            margin: 4px 0 0 0;
+            font-size: 12px;
+            color: #cbd5e1;
+        }}
+        .header-logo {{
+            width: 90px;
+            height: 54px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid #475569;
+        }}
+        .sub-bar {{
+            display: flex;
+            justify-content: space-between;
+            background: #f8fafc;
+            padding: 10px 24px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 12px;
+            font-weight: 600;
+            color: #334155;
+        }}
+        .content {{
+            padding: 20px 24px;
+        }}
+        .bed-highlight {{
+            background: #eff6ff;
+            border: 1.5px solid #93c5fd;
+            border-radius: 6px;
+            padding: 12px 18px;
+            margin-bottom: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        .bed-highlight .label {{
+            font-size: 12px;
+            font-weight: 700;
+            color: #1e40af;
+            text-transform: uppercase;
+        }}
+        .bed-highlight .value {{
+            font-size: 20px;
+            font-weight: 900;
+            color: #1e3a8a;
+        }}
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }}
+        td {{
+            padding: 9px 12px;
+            border: 1px solid #cbd5e1;
+        }}
+        td.field {{
+            background: #f8fafc;
+            font-weight: 700;
+            color: #334155;
+            width: 22%;
+            text-transform: uppercase;
+            font-size: 11.5px;
+        }}
+        td.val {{
+            font-weight: 600;
+            color: #0f172a;
+            width: 28%;
+        }}
+        .signatures {{
+            display: flex;
+            justify-content: space-between;
+            margin-top: 32px;
+            padding-top: 10px;
+            font-size: 12px;
+            color: #475569;
+        }}
+        .sig-box {{
+            border-top: 1px dashed #64748b;
+            width: 200px;
+            text-align: center;
+            padding-top: 6px;
+            font-weight: 600;
+        }}
+        .validity-footer {{
+            background: #fef2f2;
+            border-top: 2px solid #ef4444;
+            color: #991b1b;
+            text-align: center;
+            padding: 10px 16px;
+            font-size: 12.5px;
+            font-weight: 800;
+            letter-spacing: 0.4px;
+        }}
+        .print-btn-wrap {{
+            text-align: center;
+            margin-bottom: 15px;
+        }}
+        .print-btn {{
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 6px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 13px;
+        }}
+        @media print {{
+            body {{ background: #ffffff; padding: 0; }}
+            .print-btn-wrap {{ display: none; }}
+            .receipt-card {{ border: 2px solid #000; }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="print-btn-wrap">
+        <button class="print-btn" onclick="window.print()">🖨️ Print Official Bed Allotment Receipt</button>
+    </div>
+    <div class="receipt-card">
+        <div class="header">
+            <div class="header-left">
+                <h1>Graphic Era Institute of Medical Sciences</h1>
+                <p>IPD Bed Management & Admission Allotment Slip • Dehradun, Uttarakhand</p>
+            </div>
+            <img class="header-logo" src="https://mdmsenquiry.com/wp-content/uploads/2024/07/GEIMS-Dehradun-1.png" alt="GEIMS">
+        </div>
+        <div class="sub-bar">
+            <span>RECEIPT NO: GEIMS-{slip_id}</span>
+            <span>ISSUED DATE: {date_str} ({generated_time_str})</span>
+        </div>
+        <div class="content">
+            <div class="bed-highlight">
+                <span class="label">Allotted Ward / Bed Number</span>
+                <span class="value">{bed_no}</span>
+            </div>
+            <table>
+                <tr>
+                    <td class="field">Patient Name</td>
+                    <td class="val">{patient_name}</td>
+                    <td class="field">UHID Number</td>
+                    <td class="val">{uhid}</td>
+                </tr>
+                <tr>
+                    <td class="field">Admitting Doctor</td>
+                    <td class="val">{dr_name}</td>
+                    <td class="field">Payer / Category</td>
+                    <td class="val">{category}</td>
+                </tr>
+                <tr>
+                    <td class="field">Shifted From</td>
+                    <td class="val">{shift_from}</td>
+                    <td class="field">Room Category</td>
+                    <td class="val">{shift_to}</td>
+                </tr>
+                <tr>
+                    <td class="field">Clinical Remarks</td>
+                    <td class="val" colspan="3">{remark}</td>
+                </tr>
+            </table>
+            <div class="signatures">
+                <div class="sig-box">Patient / Attendant Signature</div>
+                <div class="sig-box">IPD Billing / Bed Manager</div>
+            </div>
+        </div>
+        <div class="validity-footer">
+            ⚠️ IMPORTANT NOTICE: This Bed Allotment Receipt is valid for TODAY ONLY ({date_str}). Unoccupied allotments automatically expire at midnight.
+        </div>
+    </div>
+</body>
+</html>"""
+
+# --- SIMPLE, CLEAN MATTE INTERFACE WITH GEIMS BACKGROUND ---
 st.markdown("""
 <style>
     .stAppDeployButton, a[href*="github.com"], [data-testid="stSourceCodeLink"] {
         display: none !important;
     }
     [data-testid="stAppViewContainer"] {
-        background-image: url("https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExeTNqazRwZDFlMjcwaTl6OHlvY21ucGd3YWoxaWYycjVsaG1jeGhmbyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/U4ExkAvRpVQGB0NMe0/giphy.gif") !important;
+        background-image: url("https://mdmsenquiry.com/wp-content/uploads/2024/07/GEIMS-Dehradun-1.png") !important;
         background-size: cover !important;
         background-position: center !important;
         background-attachment: fixed !important;
@@ -66,83 +287,72 @@ st.markdown("""
         content: "";
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(6, 11, 25, 0.72); 
+        background: rgba(10, 15, 28, 0.86); 
         z-index: 0;
         pointer-events: none;
     }
     div.stButton > button, div[data-testid="stFormSubmitButton"] > button {
-        background: linear-gradient(90deg, #00c6ff 0%, #5b247a 100%) !important;
+        background: #2563eb !important;
         color: #ffffff !important;
-        border: 1px solid rgba(0, 229, 255, 0.5) !important;
-        border-radius: 12px !important;
-        padding: 0.65rem 1.5rem !important;
-        font-weight: 700 !important;
-        letter-spacing: 0.8px;
-        box-shadow: 0 4px 20px rgba(0, 198, 255, 0.35) !important;
-        transition: all 0.2s ease !important;
+        border: 1px solid #3b82f6 !important;
+        border-radius: 8px !important;
+        padding: 0.55rem 1.2rem !important;
+        font-weight: 600 !important;
+        box-shadow: none !important;
+        transition: background 0.15s ease !important;
     }
     div.stButton > button:hover, div[data-testid="stFormSubmitButton"] > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 25px rgba(0, 229, 255, 0.6) !important;
+        background: #1d4ed8 !important;
+        border-color: #60a5fa !important;
+        box-shadow: none !important;
     }
     [data-testid="stMetric"], .stForm, .stExpander {
-        background: rgba(13, 18, 36, 0.82) !important; 
-        backdrop-filter: blur(28px) saturate(180%) !important;
+        background: rgba(15, 23, 42, 0.92) !important; 
         border: 1px solid rgba(255, 255, 255, 0.14) !important;
-        border-radius: 18px !important;
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65) !important;
+        border-radius: 12px !important;
+        box-shadow: none !important;
         z-index: 1;
-        margin-bottom: 20px !important;
+        margin-bottom: 18px !important;
     }
-    /* Radio Horizontal Pill Buttons for Priority Tag */
+    /* Simple Matte Radio Pills */
     div[role="radiogroup"] {
-        gap: 10px !important;
+        gap: 8px !important;
     }
     div[role="radiogroup"] > label {
-        background: rgba(15, 23, 42, 0.85) !important;
-        border: 1px solid rgba(255, 255, 255, 0.18) !important;
-        border-radius: 10px !important;
-        padding: 8px 20px !important;
+        background: #1e293b !important;
+        border: 1px solid #334155 !important;
+        border-radius: 8px !important;
+        padding: 6px 16px !important;
         color: #e2e8f0 !important;
-        font-weight: 700 !important;
-        transition: all 0.2s ease !important;
+        font-weight: 600 !important;
+        box-shadow: none !important;
     }
     div[role="radiogroup"] > label:hover {
-        border-color: #00e5ff !important;
-        box-shadow: 0 0 12px rgba(0, 229, 255, 0.35) !important;
-    }
-    h1 {
-        font-weight: 900 !important;
-        color: #ffffff !important;
-        text-shadow: 0 4px 15px rgba(0,0,0,0.7);
-        text-align: center;
-        letter-spacing: 2px;
+        border-color: #64748b !important;
     }
     .status-pill-bar {
         display: flex;
-        gap: 10px;
+        gap: 8px;
         flex-wrap: wrap;
         justify-content: flex-end;
         align-items: center;
     }
     .status-pill {
-        padding: 6px 15px;
+        padding: 5px 13px;
         border-radius: 999px;
-        font-size: 12.5px;
-        font-weight: 700;
+        font-size: 12px;
+        font-weight: 600;
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        letter-spacing: 0.4px;
+        gap: 5px;
     }
-    .pill-all { background: #00bcd4; color: #001f24; box-shadow: 0 0 12px rgba(0,188,212,0.4); }
-    .pill-wait { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.45); }
-    .pill-hold { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.45); }
-    .pill-done { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.45); }
-    .pill-ward { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.45); }
+    .pill-all  { background: #0284c7; color: #ffffff; }
+    .pill-wait { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+    .pill-hold { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); }
+    .pill-done { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .pill-ward { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
     [data-testid="stSidebar"] {
-        background-color: rgba(6, 10, 22, 0.92) !important;
-        backdrop-filter: blur(24px);
+        background-color: #0f172a !important;
         border-right: 1px solid rgba(255, 255, 255, 0.12);
     }
 </style>
@@ -176,17 +386,14 @@ bed_structure = {
 all_bed_ids = [b for w in bed_structure.values() for b in w]
 
 def normalize_bed_id(raw_val):
-    """Matches HIS Excel bed codes (e.g. 'B-P-8010' or '9005') to exact master bed IDs."""
     if pd.isna(raw_val):
         return None
     val = str(raw_val).strip().upper()
     if not val or "OPD" in val:
         return None
-    # 1. Exact match
     for b in all_bed_ids:
         if val == b.upper():
             return b
-    # 2. Prefix base code match (e.g., 'B-P-8010' -> 'B-P-8010 SLEEP STUDY')
     for b in all_bed_ids:
         base_code = b.split(" ")[0].upper()
         if val == base_code or val.startswith(base_code) or base_code in val:
@@ -197,9 +404,10 @@ def normalize_bed_id(raw_val):
 ist_tz = pytz.timezone('Asia/Kolkata')
 today_ist = datetime.now(ist_tz)
 today_date_str = today_ist.strftime('%d/%m/%Y')
+current_time_str = today_ist.strftime('%I:%M %p')
 
 if db:
-    if 'cached_live_data' not in st.session_state or 'cached_req_list' not in st.session_state:
+    if 'cached_live_data' not in st.session_state or 'cached_req_list' not in st.session_state or 'cached_book_list' not in st.session_state:
         status_doc = db.collection("settings").document("dashboard_status").get()
         st.session_state.is_live = status_doc.to_dict().get("status", "LIVE") if status_doc.exists else "LIVE"
         
@@ -217,7 +425,6 @@ if db:
                 data['timestamp'] = ts
             raw_reqs.append({**data, 'ID': r.id}) 
             
-        # Sort by: 1) Manual Position (if set < 999), 2) Priority Weight (VIP=1 -> STANDARD=5), 3) Timestamp
         st.session_state.cached_req_list = sorted(
             raw_reqs,
             key=lambda x: (
@@ -266,9 +473,21 @@ if db:
 else:
     st.error("Database Connection Failed."); st.stop()
 
-# --- 4. HEADER ---
-st.markdown("<h1 style='text-align: center; margin-bottom: 0;'>Bed Management Dashboard</h1>", unsafe_allow_html=True)
-st.markdown(f"<p style='text-align: center;'><b>Current Date: {today_date_str}</b></p>", unsafe_allow_html=True)
+# --- 4. HEADER BANNER WITH GEIMS IMAGE ---
+st.markdown(f"""
+<div style="background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 16px 24px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px;">
+    <div style="display: flex; align-items: center; gap: 16px;">
+        <img src="https://mdmsenquiry.com/wp-content/uploads/2024/07/GEIMS-Dehradun-1.png" style="width: 85px; height: 55px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.25);">
+        <div>
+            <h2 style="margin: 0; color: #ffffff; font-weight: 800; font-size: 1.55rem; letter-spacing: 0.5px;">GEIMS Bed Management Dashboard</h2>
+            <p style="margin: 2px 0 0 0; color: #94a3b8; font-size: 0.88rem;">Graphic Era Institute of Medical Sciences • Dehradun</p>
+        </div>
+    </div>
+    <div style="text-align: right; color: #e2e8f0; font-size: 0.92rem;">
+        <b>📅 Date: {today_date_str}</b>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 if st.button("🔄 Refresh Dashboard Data"):
     for key in ['cached_live_data', 'cached_req_list', 'cached_book_list']:
@@ -280,8 +499,8 @@ today_iso = today_ist.strftime('%Y-%m-%d')
 alerts = [b for b in book_list if b.get('book_date') == today_iso]
 for a in alerts:
     with st.container():
-        st.markdown(f"<div style='background-color: rgba(255, 82, 82, 0.2); border: 2px solid #FF5252; padding: 15px; border-radius: 10px; margin-bottom: 8px; color: white;'><b>🚨 TODAY'S BOOKING: {a.get('name', 'N/A')} | UHID: {a.get('uhid', '-')} | Preferred: {a.get('pref_bed', '-')}</b></div>", unsafe_allow_html=True)
-        if st.button(f"✅ Admit: {a.get('name')}", key=f"ack_{a['ID']}"):
+        st.markdown(f"<div style='background-color: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; padding: 12px 16px; border-radius: 8px; margin-bottom: 8px; color: #fecaca;'><b>🚨 TODAY'S SCHEDULED BOOKING: {a.get('name', 'N/A')} | UHID: {a.get('uhid', '-')} | Doctor: {a.get('dr', '-')} | Preferred Bed: {a.get('pref_bed', '-')}</b></div>", unsafe_allow_html=True)
+        if st.button(f"✅ Admit Booking: {a.get('name')}", key=f"ack_{a['ID']}"):
             db.collection("bed_requests").add({
                 "timestamp": datetime.now(ist_tz),
                 "name": a.get('name'), "uhid": a.get('uhid', ''),
@@ -303,24 +522,22 @@ for a in alerts:
                 if k in st.session_state: del st.session_state[k]
             st.rerun()
 
-# --- 6. ADVANCED PATIENT SHIFTING & PRIORITY QUEUE REGISTRATION ---
-with st.expander("✨ PATIENT SHIFTING & PRIORITY QUEUE MANAGEMENT", expanded=True):
-    # Live Pill Counters
+# --- 6. PATIENT SHIFTING & PRIORITY QUEUE REGISTRATION ---
+with st.expander("📋 PATIENT SHIFTING & PRIORITY QUEUE MANAGEMENT", expanded=True):
     total_cnt = len(req_list)
     wait_cnt = sum(1 for r in req_list if r.get('status', 'WAITING') == "WAITING" and not r.get('bed_no'))
     hold_cnt = sum(1 for r in req_list if r.get('status') == "HOLD")
     done_cnt = sum(1 for r in req_list if r.get('status') == "DONE" or (r.get('bed_no') and r.get('status') in ["WAITING", "HOLD"]))
     ward_cnt = sum(1 for r in req_list if r.get('status') == "GEN-WARD ALLOTTED")
 
-    # Screenshot-matched Header + Dynamic Status Pill Badges
     st.markdown(f"""
-    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding-bottom:14px; border-bottom:1px solid rgba(255,255,255,0.12); margin-bottom:18px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:16px;">
         <div>
-            <div style="font-size:1.35rem; font-weight:800; color:#ffffff; display:flex; align-items:center; gap:8px;">
-                ✨ Patient Shifting & Priority Queue Registration
+            <div style="font-size:1.2rem; font-weight:700; color:#ffffff;">
+                Patient Shifting & Priority Queue Registration
             </div>
-            <div style="font-size:0.84rem; color:#94a3b8; margin-top:2px;">
-                Register real patient admissions & transfers only. Prioritized cases (VIP, HWC, GEU, Important) glow prominently.
+            <div style="font-size:0.82rem; color:#94a3b8;">
+                Register patient admissions & transfers. Priority tags organize internal queue order.
             </div>
         </div>
         <div class="status-pill-bar">
@@ -333,7 +550,6 @@ with st.expander("✨ PATIENT SHIFTING & PRIORITY QUEUE MANAGEMENT", expanded=Tr
     </div>
     """, unsafe_allow_html=True)
 
-    # Registration Form matching the exact 2-row dark layout
     with st.form("new_req", clear_on_submit=True):
         r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([2.1, 1.3, 1.5, 1.6, 1.4, 1.4])
         p_name = r1c1.text_input("PATIENT NAME *", placeholder="Enter Registered Patient Name")
@@ -345,7 +561,7 @@ with st.expander("✨ PATIENT SHIFTING & PRIORITY QUEUE MANAGEMENT", expanded=Tr
 
         r2c1, r2c2, r2c3 = st.columns([3.8, 3.2, 2.3])
         p_prio = r2c1.radio(
-            "GLOWING PRIORITY TAG (VIP, HWC, GEU, IMPORTANT, STANDARD)",
+            "PRIORITY TAG (VIP, HWC, GEU, IMPORTANT, STANDARD)",
             ["VIP", "HWC", "GEU", "IMPORTANT", "STANDARD"],
             index=4,
             horizontal=True
@@ -404,18 +620,18 @@ with st.expander("✨ PATIENT SHIFTING & PRIORITY QUEUE MANAGEMENT", expanded=Tr
                     if 'cached_req_list' in st.session_state: del st.session_state['cached_req_list']
                     st.rerun()
 
-    # Queue Filtering & Glowing Priority Cards
+    # Queue Filtering & Clean List
     if req_list:
         st.divider()
         fc1, fc2, fc3, fc4 = st.columns(4)
         sq = fc1.text_input("🔍 Search Patient / UHID / Doctor", "").lower()
-        prio_filter = fc2.selectbox("✨ Filter by Priority Tag", ["ALL", "VIP", "HWC", "GEU", "IMPORTANT", "STANDARD"])
+        prio_filter = fc2.selectbox("🏷️ Filter by Priority Tag", ["ALL", "VIP", "HWC", "GEU", "IMPORTANT", "STANDARD"])
         shift_filter = fc3.selectbox("📂 Filter by Room Preference", ["ALL", "DELUXE", "PRIVATE", "SEMI-PRIVATE", "GEN-WARD"])
         status_filter = fc4.selectbox("📊 Filter by Status", ["ALL", "WAITING", "DONE", "CANCELLED", "HOLD", "GEN-WARD ALLOTTED"])
 
         st.divider()
-        h_cols = st.columns([0.5, 1.1, 2.0, 1.3, 1.4, 1.3, 1.3, 1.8, 1.0, 1.2, 1.1])
-        headers = ["S.N", "PRIORITY", "PATIENT / UHID", "PAYER", "DOCTOR", "FROM", "TO", "REMARK", "BED", "STATUS", "SLIP"]
+        h_cols = st.columns([0.5, 1.1, 2.0, 1.2, 1.4, 1.2, 1.2, 1.8, 1.0, 1.2, 1.2])
+        headers = ["S.N", "TAG", "PATIENT / UHID", "PAYER", "DOCTOR", "FROM", "TO", "REMARK", "BED", "STATUS", "RECEIPT"]
         for col, h in zip(h_cols, headers): col.write(f"**{h}**")
         
         for idx, r in enumerate(req_list):
@@ -440,22 +656,14 @@ with st.expander("✨ PATIENT SHIFTING & PRIORITY QUEUE MANAGEMENT", expanded=Tr
             ts = r.get('timestamp')
             if ts:
                 if hasattr(ts, 'tzinfo') and ts.tzinfo is None: ts = pytz.utc.localize(ts)
-                ts_str = ts.astimezone(ist_tz).strftime('%d/%m/%Y %I:%M %p')
+                ts_str = ts.astimezone(ist_tz).strftime('%d/%m/%Y %I:%M:%S %p')
             else:
                 ts_str = "-"
 
-            # Glowing Priority Wrapper Banner for VIP / HWC / GEU / IMPORTANT
-            if prio_tag != "STANDARD":
-                st.markdown(
-                    f"<div style='background:{p_style['bg']}; border-left:4px solid {p_style['color']}; border-top:1px solid {p_style['border']}; box-shadow:{p_style['glow']}; padding:4px 12px; border-radius:8px; margin-bottom:4px; font-size:11.5px; color:{p_style['color']}; font-weight:700;'>"
-                    f"{p_style['icon']} {prio_tag} PRIORITY CASE &nbsp;|&nbsp; 🕒 Logged: {ts_str}</div>",
-                    unsafe_allow_html=True
-                )
-
-            r_cols = st.columns([0.5, 1.1, 2.0, 1.3, 1.4, 1.3, 1.3, 1.8, 1.0, 1.2, 1.1])
+            r_cols = st.columns([0.5, 1.1, 2.0, 1.2, 1.4, 1.2, 1.2, 1.8, 1.0, 1.2, 1.2])
             r_cols[0].write(f"**{idx + 1}**")
             r_cols[1].markdown(
-                f"<span style='background:{p_style['bg']}; color:{p_style['color']}; border:1px solid {p_style['border']}; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:800;'>{p_style['icon']} {prio_tag}</span>",
+                f"<span style='background:{p_style['bg']}; color:{p_style['color']}; border:1px solid {p_style['border']}; padding:2px 7px; border-radius:4px; font-size:11px; font-weight:700;'>{prio_tag}</span>",
                 unsafe_allow_html=True
             )
             uhid_sub = f"<br><span style='font-size:11px; color:#94a3b8;'>UHID: {r.get('uhid')}</span>" if r.get('uhid') else ""
@@ -475,7 +683,7 @@ with st.expander("✨ PATIENT SHIFTING & PRIORITY QUEUE MANAGEMENT", expanded=Tr
                 html_code = f"""
                 <!DOCTYPE html><html><head><style>
                     body {{ margin: 0; padding: 0; font-family: sans-serif; font-size: 13px; font-weight: bold; color: {color}; background: transparent; overflow: hidden; }}
-                    .t {{ font-size: 11px; color: #ffeb3b; font-weight: 600; display: block; margin-top: 2px; }}
+                    .t {{ font-size: 11px; color: #fde047; font-weight: 600; display: block; margin-top: 2px; }}
                 </style></head><body>
                     <div id="main_{r['ID']}">{current_status}</div>
                     <script>
@@ -499,28 +707,24 @@ with st.expander("✨ PATIENT SHIFTING & PRIORITY QUEUE MANAGEMENT", expanded=Tr
                 with r_cols[9]:
                     components.html(html_code, height=42)
             else:
-                r_cols[9].markdown(f"<span style='color:{color}; font-weight:800;'>{current_status}</span>", unsafe_allow_html=True)
+                r_cols[9].markdown(f"<span style='color:{color}; font-weight:700;'>{current_status}</span>", unsafe_allow_html=True)
             
+            # Advanced HTML Receipt Download (Zero mention of Priority, Valid Today Only)
             if current_status == "DONE":
-                slip = (
-                    f"====================================\n"
-                    f"      G.E.I.M.S (Bed Management)\n"
-                    f"      BED ALLOTMENT SLIP\n"
-                    f"====================================\n"
-                    f"DATE:     {today_date_str}\n"
-                    f"PATIENT:  {r.get('name', '')}\n"
-                    f"UHID:     {r.get('uhid', '-')}\n"
-                    f"PRIORITY: {prio_tag}\n"
-                    f"DOCTOR:   {r.get('dr_name', '-')}\n"
-                    f"PAYER:    {r.get('category', '-')}\n"
-                    f"------------------------------------\n"
-                    f"BED:      {b_no}\n"
-                    f"===================================="
+                receipt_html = generate_advanced_receipt_html(r, today_date_str, current_time_str)
+                r_cols[10].download_button(
+                    "🖨️ Receipt",
+                    data=receipt_html,
+                    file_name=f"GEIMS_Receipt_{r.get('name', 'Patient').replace(' ', '_')}.html",
+                    mime="text/html",
+                    key=f"rec_{r['ID']}"
                 )
-                r_cols[10].download_button("🖨️ Slip", data=slip, file_name=f"Slip_{r.get('name', 'Patient')}.txt", key=f"rec_{r['ID']}")
 
-            if prio_tag == "STANDARD":
-                st.markdown(f"<div style='font-size: 11px; color: rgba(255,255,255,0.55); margin-left: 35px; margin-top: -10px; margin-bottom: 10px;'>🕒 Entry Timestamp (IST): <b>{ts_str}</b></div>", unsafe_allow_html=True)
+            # Strictly clean Entry Timestamp (No priority reflection here)
+            st.markdown(
+                f"<div style='font-size: 11px; color: rgba(255,255,255,0.6); margin-left: 35px; margin-top: -10px; margin-bottom: 10px;'>🕒 Entry Timestamp (IST): <b>{ts_str}</b></div>",
+                unsafe_allow_html=True
+            )
 
 # --- PDF CONSENT FORM PANEL ---
 st.subheader("📝 ADMISSION & SHIFTING CONSENT FORMS (PDF)")
@@ -537,30 +741,82 @@ with c_col3: st.download_button("🎖️ 3 - ECHS", get_pdf_data("consent_echs.p
 with c_col4: st.download_button("🏥 4 - CGHS CREDIT/PSU", get_pdf_data("consent_cghs_credit.pdf") or b"", file_name="Consent_CGHS_Credit.pdf", mime="application/pdf")
 with c_col5: st.download_button("🏢 5 - TPA", get_pdf_data("consent_tpa.pdf") or b"", file_name="Consent_TPA.pdf", mime="application/pdf")
 
-# --- 7. SIDEBAR & SMART EXCEL CENSUS SYNC ---
+# --- 7. SIDEBAR (ADMIN PANEL WITH FUTURE BOOKING VIEW & EXCEL SYNC) ---
 show_dashboard = False
 with st.sidebar:
-    st.header("📅 Future Booking Control")
-    with st.expander("📝 ADD FUTURE BOOKING"):
-        with st.form("future_form", clear_on_submit=True):
-            f_name = st.text_input("Patient Name"); f_uhid = st.text_input("UHID No."); f_dr = st.text_input("Doctor Name")
-            f_date = st.date_input("Booking Date"); f_room = st.text_input("Pre-decided Bed ID"); f_cat = st.selectbox("Category", ["SELF PAY", "OTHER"]); f_pref = st.selectbox("Bed Preference", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
-            if st.form_submit_button("Save"):
-                db.collection("future_bookings").add({"name": f_name, "uhid": f_uhid, "dr": f_dr, "book_date": f_date.strftime('%Y-%m-%d'), "category": f_cat, "preference": f_pref, "pref_bed": f_room})
-                send_ntfy_notification(
-                    title="📅 New Future Booking",
-                    message=f"Patient: {f_name}\nDate: {f_date.strftime('%d/%m/%Y')}\nDoctor: {f_dr}",
-                    priority="urgent",
-                    tags="calendar,hospital"
-                )
-                if 'cached_book_list' in st.session_state: del st.session_state['cached_book_list']
-                st.rerun()
-
-    st.divider(); st.header("🛡️ Admin Panel")
+    st.header("🛡️ Admin Panel")
     if st.text_input("Admin Password", type="password") == "GeimsAdmin99":
         show_dashboard = True
 
-        # --- NEW: SMART EXCEL / CSV AUTO-SYNC ENGINE ---
+        # --- 7A. ADMIN FUTURE BOOKING CONTROL & LIVE LIST ---
+        st.subheader("📅 Future Booking Control")
+        with st.expander("➕ Add New Future Booking", expanded=False):
+            with st.form("future_form", clear_on_submit=True):
+                f_name = st.text_input("Patient Name *")
+                f_uhid = st.text_input("UHID No.")
+                f_dr = st.text_input("Doctor Name")
+                f_date = st.date_input("Booking Date")
+                f_room = st.text_input("Pre-decided Bed ID")
+                f_cat = st.selectbox("Category", ["SELF PAY", "ECHS", "CGHS", "TPA", "AYUSHMAN", "OTHER"])
+                f_pref = st.selectbox("Bed Preference", ["DELUXE", "PRIVATE", "SEMI-PRIVATE"])
+                if st.form_submit_button("Save Future Booking"):
+                    if f_name.strip():
+                        db.collection("future_bookings").add({
+                            "name": f_name.strip(),
+                            "uhid": f_uhid.strip(),
+                            "dr": f_dr.strip(),
+                            "book_date": f_date.strftime('%Y-%m-%d'),
+                            "category": f_cat,
+                            "preference": f_pref,
+                            "pref_bed": f_room.strip()
+                        })
+                        send_ntfy_notification(
+                            title="📅 New Future Booking",
+                            message=f"Patient: {f_name}\nDate: {f_date.strftime('%d/%m/%Y')}\nDoctor: {f_dr}",
+                            priority="urgent",
+                            tags="calendar,hospital"
+                        )
+                        if 'cached_book_list' in st.session_state: del st.session_state['cached_book_list']
+                        st.rerun()
+                    else:
+                        st.warning("Please enter Patient Name.")
+
+        with st.expander(f"📋 View Scheduled Bookings ({len(book_list)})", expanded=True):
+            if book_list:
+                for b in book_list:
+                    st.markdown(
+                        f"<div style='background:#1e293b; border:1px solid #334155; padding:8px 10px; border-radius:6px; margin-bottom:6px; font-size:12px;'>"
+                        f"<b>👤 {b.get('name', '-')}</b> (UHID: {b.get('uhid') or '-'})<br>"
+                        f"📅 <b>Date:</b> {b.get('book_date', '-')} | 🛏️ <b>Pref:</b> {b.get('preference', '-')} ({b.get('pref_bed') or 'Any'})<br>"
+                        f"👨‍⚕️ <b>Dr:</b> {b.get('dr') or '-'} | 💳 <b>Cat:</b> {b.get('category', '-')}"
+                        f"</div>",
+                        unsafe_allow_html=True
+                    )
+                    b_col1, b_col2 = st.columns(2)
+                    if b_col1.button("✅ Admit Now", key=f"adm_sb_{b['ID']}"):
+                        db.collection("bed_requests").add({
+                            "timestamp": datetime.now(ist_tz),
+                            "name": b.get('name'), "uhid": b.get('uhid', ''),
+                            "category": b.get('category', 'OTHER'),
+                            "dr_name": b.get('dr'), "shift_from": "BOOKING", "shift_to": b.get('preference', 'PRIVATE'),
+                            "priority": "IMPORTANT",
+                            "remark": f"Reserved: {b.get('pref_bed','-')}",
+                            "bed_no": "", "status": "WAITING",
+                            "date": today_date_str, "position": 999
+                        })
+                        db.collection("future_bookings").document(b['ID']).delete()
+                        for k in ['cached_req_list', 'cached_book_list']:
+                            if k in st.session_state: del st.session_state[k]
+                        st.rerun()
+                    if b_col2.button("🗑️ Delete", key=f"del_sb_{b['ID']}"):
+                        db.collection("future_bookings").document(b['ID']).delete()
+                        if 'cached_book_list' in st.session_state: del st.session_state['cached_book_list']
+                        st.rerun()
+            else:
+                st.caption("No upcoming future bookings scheduled.")
+
+        # --- 7B. SMART EXCEL / CSV AUTO-SYNC ENGINE ---
+        st.divider()
         st.subheader("⚡ Smart Excel Bed Auto-Sync")
         st.caption("Upload HIS Occupancy Excel/CSV. Automatically removes OPD rows, fills occupied beds (Patient, Doctor, Payer), and vacates discharged beds.")
         uploaded_census = st.file_uploader("Upload Occupancy Sheet (.xlsx / .csv)", type=["xlsx", "xls", "csv"])
@@ -575,7 +831,6 @@ with st.sidebar:
                 df_raw.columns = [str(c).strip() for c in df_raw.columns]
                 cols_list = list(df_raw.columns)
 
-                # Helper to auto-detect column names from HIS export
                 def guess_col(keywords, default_idx=0):
                     for idx, c in enumerate(cols_list):
                         if any(k in c.lower() for k in keywords):
@@ -590,15 +845,13 @@ with st.sidebar:
                     uhid_col = st.selectbox("UHID Column (Optional)", ["None"] + cols_list, index=0)
                     type_col = st.selectbox("Visit Type / Ward Column (For OPD Filter)", ["Auto-Detect Across Row"] + cols_list, index=0)
 
-                vacate_missing = st.checkbox("Auto-vacate previously ALLOTTED beds not present in this Excel (Discharged)", value=True)
+                vacate_missing = st.checkbox("Auto-vacate previously ALLOTTED beds not in this Excel", value=True)
 
                 if st.button("🚀 Sync Beds with Excel Now", use_container_width=True):
                     occupied_map = {}
                     opd_skipped = 0
-                    unmatched_beds = []
 
                     for _, row in df_raw.iterrows():
-                        # 1. Strip out OPD / Emergency / Casualty encounters automatically
                         if type_col != "Auto-Detect Across Row":
                             row_type_str = str(row.get(type_col, "")).upper()
                         else:
@@ -612,12 +865,7 @@ with st.sidebar:
                         matched_bed = normalize_bed_id(raw_bed)
                         p_val = str(row.get(pat_col, "")).strip() if pd.notna(row.get(pat_col)) else ""
 
-                        if not matched_bed:
-                            if pd.notna(raw_bed) and str(raw_bed).strip():
-                                unmatched_beds.append(str(raw_bed).strip())
-                            continue
-
-                        if not p_val or p_val.lower() in ["nan", "none", "vacant", ""]:
+                        if not matched_bed or not p_val or p_val.lower() in ["nan", "none", "vacant", ""]:
                             continue
 
                         dr_val = str(row.get(dr_col, "")).strip() if pd.notna(row.get(dr_col)) else "-"
@@ -633,7 +881,6 @@ with st.sidebar:
                             "last_sync": today_ist.strftime('%d/%m/%Y %I:%M %p')
                         }
 
-                    # 2. Batch Commit to Firestore
                     batch = db.batch()
                     updated_cnt = 0
                     vacated_cnt = 0
@@ -645,7 +892,6 @@ with st.sidebar:
                             updated_cnt += 1
                         elif vacate_missing:
                             curr_state = live_data.get(b_id, {}).get("status", "VACANT")
-                            # Only auto-vacate beds that were ALLOTTED or DISCHARGE (preserve MAINTENANCE, RESTRICTED, BOOKED)
                             if curr_state in ["ALLOTTED", "DISCHARGE"]:
                                 batch.set(doc_ref, {"status": "VACANT", "patient": "", "dr_name": "", "payer": "", "uhid": ""})
                                 vacated_cnt += 1
@@ -653,7 +899,7 @@ with st.sidebar:
                     batch.commit()
                     if 'cached_live_data' in st.session_state:
                         del st.session_state['cached_live_data']
-                    st.success(f"✅ Synced! {updated_cnt} Beds Occupied | {vacated_cnt} Discharged/Vacated | {opd_skipped} OPD Rows Ignored.")
+                    st.success(f"✅ Synced! {updated_cnt} Occupied | {vacated_cnt} Vacated | {opd_skipped} OPD Skipped.")
                     st.rerun()
 
             except Exception as e:
@@ -792,15 +1038,15 @@ with st.sidebar:
             if 'cached_live_data' in st.session_state: del st.session_state['cached_live_data']
             st.rerun()
 
-# --- 8. VISUAL LIVE BED DASHBOARD (ENHANCED WITH DOCTOR & PAYER) ---
+# --- 8. VISUAL LIVE BED DASHBOARD ---
 if show_dashboard:
     status_colors = {
         "VACANT": "#FFFFFF",
-        "BOOKED": "#90EE90",
-        "ALLOTTED": "#0F172A",
-        "DISCHARGE": "#ADD8E6",
-        "MAINTENANCE": "#E0E0E0",
-        "RESTRICTED": "#FF0000"
+        "BOOKED": "#DCFCE7",
+        "ALLOTTED": "#1E293B",
+        "DISCHARGE": "#E0F2FE",
+        "MAINTENANCE": "#E2E8F0",
+        "RESTRICTED": "#FEE2E2"
     }
     st.title("🏥 Live Bed Status")
     for wing, beds in bed_structure.items():
@@ -810,22 +1056,22 @@ if show_dashboard:
             data = live_data.get(bed, {"status": "VACANT", "patient": "", "dr_name": "", "payer": ""})
             st_val = data.get("status", "VACANT")
             bg = status_colors.get(st_val, "#FFFFFF")
-            txt = "white" if st_val in ["ALLOTTED", "RESTRICTED"] else "#0f172a"
-            border_css = "2px solid #00e5ff" if st_val == "ALLOTTED" else "1px solid #ccc"
+            txt = "#FFFFFF" if st_val == "ALLOTTED" else ("#991B1B" if st_val == "RESTRICTED" else "#0F172A")
+            border_css = "1px solid #475569" if st_val == "ALLOTTED" else "1px solid #CBD5E1"
 
             pat_line = f"<b>{data.get('patient', '')}</b>" if data.get('patient') else "<i>Available</i>"
             dr_line = f"<br><span style='font-size:9.5px; opacity:0.85;'>👨‍⚕️ {data.get('dr_name')}</span>" if data.get('dr_name') else ""
-            pay_line = f"<br><span style='font-size:9px; background:rgba(0,229,255,0.2); padding:1px 5px; border-radius:4px;'>💳 {data.get('payer')}</span>" if data.get('payer') else ""
+            pay_line = f"<br><span style='font-size:9px; border:1px solid rgba(148,163,184,0.4); padding:1px 5px; border-radius:4px;'>💳 {data.get('payer')}</span>" if data.get('payer') else ""
 
             with cols[i % 5]:
                 st.markdown(
-                    f'<div style="background-color:{bg}; color:{txt}; padding:7px 5px; border:{border_css}; border-radius:8px; text-align:center; height:112px; font-size:11px; margin-bottom:8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">'
+                    f'<div style="background-color:{bg}; color:{txt}; padding:7px 5px; border:{border_css}; border-radius:6px; text-align:center; height:110px; font-size:11px; margin-bottom:8px;">'
                     f'<b style="font-size:11.5px;">{bed}</b><br>'
-                    f'<span style="font-size:9.5px; font-weight:800; letter-spacing:0.5px;">{st_val}</span><br>'
+                    f'<span style="font-size:9.5px; font-weight:700;">{st_val}</span><br>'
                     f'<span style="font-size:10.5px;">{pat_line}</span>'
                     f'{dr_line}{pay_line}'
                     f'</div>',
                     unsafe_allow_html=True
                 )
 else:
-    st.info("🔒 Enter Admin Password in sidebar to view Bed Status & Excel Auto-Sync.")
+    st.info("🔒 Enter Admin Password in sidebar to view Bed Status, Future Bookings & Excel Auto-Sync.")
