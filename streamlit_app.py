@@ -50,17 +50,14 @@ def send_ntfy_notification(title, message, priority="urgent", tags="hospital,war
     except Exception:
         pass
 
-# --- ADVANCED PRINTABLE HTML RECEIPT GENERATOR (IMAGE USED ONLY HERE, NO PRIORITY) ---
+# --- ADVANCED PRINTABLE HTML RECEIPT GENERATOR (A3, UPPER-LEFT, CLEAN FIELDS) ---
 def generate_advanced_receipt_html(req_data, date_str, generated_time_str):
     patient_name = req_data.get('name', '-')
     uhid = req_data.get('uhid') or 'N/A'
     category = req_data.get('category', '-')
     dr_name = req_data.get('dr_name', '-')
     shift_from = req_data.get('shift_from', '-')
-    shift_to = req_data.get('shift_to', '-')
     bed_no = req_data.get('bed_no', '-')
-    remark = req_data.get('remark') or 'None'
-    slip_id = str(req_data.get('ID', '0000'))[:8].upper()
     bg_url = "https://mdmsenquiry.com/wp-content/uploads/2024/07/GEIMS-Dehradun-1.png"
 
     return f"""<!DOCTYPE html>
@@ -69,7 +66,10 @@ def generate_advanced_receipt_html(req_data, date_str, generated_time_str):
     <meta charset="utf-8">
     <title>Bed Allotment Receipt - {patient_name}</title>
     <style>
-        @page {{ size: A5 landscape; margin: 10mm; }}
+        @page {{
+            size: A3;
+            margin: 10mm;
+        }}
         * {{
             box-sizing: border-box;
             -webkit-print-color-adjust: exact !important;
@@ -80,12 +80,16 @@ def generate_advanced_receipt_html(req_data, date_str, generated_time_str):
             background-color: #e2e8f0;
             color: #0f172a;
             margin: 0;
-            padding: 25px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: flex-start;
         }}
         .receipt-card {{
             position: relative;
-            max-width: 740px;
-            margin: 0 auto;
+            width: 680px;
+            margin: 0;
             background-color: #ffffff;
             border: 2px solid #0f172a;
             border-radius: 8px;
@@ -112,47 +116,57 @@ def generate_advanced_receipt_html(req_data, date_str, generated_time_str):
             justify-content: space-between;
             background: rgba(15, 23, 42, 0.96);
             color: #ffffff;
-            padding: 16px 24px;
+            padding: 14px 22px;
             border-bottom: 3px solid #2563eb;
+            gap: 16px;
         }}
         .header-left h1 {{
             margin: 0;
-            font-size: 18px;
+            font-size: 17px;
             font-weight: 800;
             letter-spacing: 0.5px;
             text-transform: uppercase;
         }}
         .header-left p {{
             margin: 4px 0 0 0;
-            font-size: 12px;
+            font-size: 11.5px;
             color: #cbd5e1;
         }}
-        .header-logo {{
-            width: 95px;
-            height: 56px;
-            object-fit: cover;
+        .logo-box {{
+            background: #ffffff;
+            padding: 4px 6px;
             border-radius: 6px;
-            border: 1.5px solid #94a3b8;
+            border: 1.5px solid #cbd5e1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }}
+        .header-logo {{
+            width: 115px;
+            height: 54px;
+            object-fit: contain;
+            display: block;
         }}
         .sub-bar {{
             display: flex;
-            justify-content: space-between;
-            background: rgba(248, 250, 252, 0.92);
-            padding: 9px 24px;
+            justify-content: flex-end;
+            background: rgba(248, 250, 252, 0.94);
+            padding: 8px 22px;
             border-bottom: 1px solid #cbd5e1;
             font-size: 12px;
             font-weight: 700;
             color: #1e293b;
         }}
         .content {{
-            padding: 20px 24px;
+            padding: 18px 22px;
         }}
         .bed-highlight {{
-            background: rgba(239, 246, 255, 0.92);
+            background: rgba(239, 246, 255, 0.94);
             border: 1.5px solid #60a5fa;
             border-radius: 6px;
             padding: 12px 18px;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -164,7 +178,7 @@ def generate_advanced_receipt_html(req_data, date_str, generated_time_str):
             text-transform: uppercase;
         }}
         .bed-highlight .value {{
-            font-size: 21px;
+            font-size: 20px;
             font-weight: 900;
             color: #1e3a8a;
         }}
@@ -172,14 +186,14 @@ def generate_advanced_receipt_html(req_data, date_str, generated_time_str):
             width: 100%;
             border-collapse: collapse;
             font-size: 13px;
-            background: rgba(255, 255, 255, 0.88);
+            background: rgba(255, 255, 255, 0.9);
         }}
         td {{
             padding: 9px 12px;
             border: 1px solid #94a3b8;
         }}
         td.field {{
-            background: rgba(241, 245, 249, 0.92);
+            background: rgba(241, 245, 249, 0.94);
             font-weight: 700;
             color: #1e293b;
             width: 22%;
@@ -191,55 +205,51 @@ def generate_advanced_receipt_html(req_data, date_str, generated_time_str):
             color: #0f172a;
             width: 28%;
         }}
-        .signatures {{
-            display: flex;
-            justify-content: space-between;
-            margin-top: 34px;
-            padding-top: 10px;
-            font-size: 12px;
-            color: #1e293b;
-        }}
-        .sig-box {{
-            border-top: 1.5px dashed #334155;
-            width: 210px;
-            text-align: center;
-            padding-top: 6px;
-            font-weight: 700;
-        }}
         .validity-footer {{
             background: #fef2f2;
             border-top: 2px solid #dc2626;
             color: #991b1b;
             text-align: center;
             padding: 10px 16px;
-            font-size: 12.5px;
+            font-size: 12px;
             font-weight: 800;
             letter-spacing: 0.4px;
         }}
         .print-btn-wrap {{
-            text-align: center;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }}
         .print-btn {{
             background: #2563eb;
             color: white;
             border: none;
-            padding: 10px 22px;
+            padding: 9px 20px;
             border-radius: 6px;
             font-weight: 700;
             cursor: pointer;
             font-size: 13px;
         }}
         @media print {{
-            body {{ background: #ffffff; padding: 0; }}
-            .print-btn-wrap {{ display: none; }}
-            .receipt-card {{ border: 2px solid #000; }}
+            html, body {{
+                background: #ffffff;
+                margin: 0 !important;
+                padding: 0 !important;
+                align-items: flex-start !important;
+                justify-content: flex-start !important;
+            }}
+            .print-btn-wrap {{
+                display: none !important;
+            }}
+            .receipt-card {{
+                margin: 0 !important;
+                border: 2px solid #000;
+                page-break-inside: avoid;
+            }}
         }}
     </style>
 </head>
 <body>
     <div class="print-btn-wrap">
-        <button class="print-btn" onclick="window.print()">🖨️ Print Official Bed Allotment Receipt</button>
+        <button class="print-btn" onclick="window.print()">🖨️ Print Official Bed Allotment Receipt (A3 Upper-Left)</button>
     </div>
     <div class="receipt-card">
         <div class="receipt-bg"></div>
@@ -249,10 +259,11 @@ def generate_advanced_receipt_html(req_data, date_str, generated_time_str):
                     <h1>Graphic Era Institute of Medical Sciences</h1>
                     <p>IPD Bed Management & Official Allotment Receipt • Dehradun, Uttarakhand</p>
                 </div>
-                <img class="header-logo" src="{bg_url}" alt="GEIMS">
+                <div class="logo-box">
+                    <img class="header-logo" src="{bg_url}" alt="GEIMS Logo">
+                </div>
             </div>
             <div class="sub-bar">
-                <span>RECEIPT NO: GEIMS-{slip_id}</span>
                 <span>DATE OF ISSUE: {date_str} ({generated_time_str})</span>
             </div>
             <div class="content">
@@ -275,19 +286,9 @@ def generate_advanced_receipt_html(req_data, date_str, generated_time_str):
                     </tr>
                     <tr>
                         <td class="field">Shifted From</td>
-                        <td class="val">{shift_from}</td>
-                        <td class="field">Room Category</td>
-                        <td class="val">{shift_to}</td>
-                    </tr>
-                    <tr>
-                        <td class="field">Remarks</td>
-                        <td class="val" colspan="3">{remark}</td>
+                        <td class="val" colspan="3">{shift_from}</td>
                     </tr>
                 </table>
-                <div class="signatures">
-                    <div class="sig-box">Patient / Attendant Signature</div>
-                    <div class="sig-box">Authorized Bed Manager Sign</div>
-                </div>
             </div>
             <div class="validity-footer">
                 ⚠️ IMPORTANT NOTICE: This receipt is valid for TODAY ONLY ({date_str}).
@@ -395,7 +396,7 @@ bed_structure = {
     "Eighth Floor - B Wing": ["B-D-8006", "B-P-8007", "B-P-8008", "B-P-8009", "B-P-8010 SLEEP STUDY", "B-SP-8001-1", "B-SP-8001-2", "B-SP-8002-1", "B-SP-8002-2", "B-SP-8003-1", "B-SP-8003-2", "B-SP-8004-1", "B-SP-8004-2", "B-SP-8005-1", "B-SP-8005-2"],
     "Ninth Floor - A Wing": ["A-P-9001", "A-P-9002", "A-P-9003", "A-P-9004", "A-P-9005 DELUX", "A-SP-9006-1 NEUTROPHILIC", "A-SP-9006-2 NEUTROPHILIC", "A-SP-9007-1", "A-SP-9007-2", "A-SP-9008-1", "A-SP-9008-2", "A-SP-9009-1", "A-SP-9009-2", "A-SP-9010-1", "A-SP-9010-2"],
     "Ninth Floor - B Wing": ["B-D-9020", "B-P-9021", "B-P-9022", "B-P-9023", "B-P-9024", "B-SP-9015-1", "B-SP-9015-2", "B-SP-9016-1", "B-SP-9016-2", "B-SP-9017-1", "B-SP-9017-2", "B-SP-9018-1", "B-SP-9018-2", "B-SP-9019-1", "B-SP-9019-2"],
-    "Ninth Floor - C Wing": ["C-D-9036", "C-D-9037", "C-D-9038", "C-D-9039", "C-D-9040", "C-P-9032", "C-P-9033", "C-P-9034", "C-P-9035", "C-SP-9041-1", "C-SP-9041-2"],
+    "Ninth Floor - C Wing": ["C-D-9036", "C-D-9037", "C-D-9038", "C-D-9039", "C-D-9040", "C-P-9032", "C-P-9033", "C-P-9034", "C-P-9035", "C-P-9041-1", "C-P-9041-2"],
     "Ninth Floor - F Wing": ["F-D-9052", "F-P-9048", "F-P-9049", "F-P-9050", "F-P-9051", "F-SP-9053-1", "F-SP-9053-2", "F-SP-9054-1", "F-SP-9054-2", "F-SP-9055-1", "F-SP-9055-2", "F-SP-9056-1", "F-SP-9056-2", "F-SP-9057-1", "F-SP-9057-2"]
 }
 all_bed_ids = [b for w in bed_structure.values() for b in w]
@@ -1011,7 +1012,7 @@ with st.expander("📋 PATIENT SHIFTING & PRIORITY QUEUE MANAGEMENT", expanded=T
             else:
                 r_cols[9].markdown(f"<span style='color:{color}; font-weight:700;'>{current_status}</span>", unsafe_allow_html=True)
             
-            # Official Printable HTML Receipt (With GEIMS Background, No Priority, Valid Today Only)
+            # Official Printable HTML Receipt (A3, Upper-Left, Clean Fields, Fitted Logo)
             if current_status == "DONE":
                 receipt_html = generate_advanced_receipt_html(r, today_date_str, current_time_str)
                 r_cols[10].download_button(
