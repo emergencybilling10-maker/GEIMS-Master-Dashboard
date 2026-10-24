@@ -297,7 +297,7 @@ def generate_advanced_receipt_html(req_data, date_str, generated_time_str):
 </body>
 </html>"""
 
-# --- SIMPLE, FLAT MATTE INTERFACE (NO GLOW, NO BACKGROUND IMAGE ON APP) ---
+# --- SIMPLE, FLAT MATTE INTERFACE (NO GLOW, ULTRA-MINIMAL TAG PILL) ---
 st.markdown("""
 <style>
     .stAppDeployButton, a[href*="github.com"], [data-testid="stSourceCodeLink"] {
@@ -322,25 +322,35 @@ st.markdown("""
         border-color: #60a5fa !important;
         box-shadow: none !important;
     }
-    /* Compact Popover Trigger Button under Bed Cards */
+    /* Ultra-Minimal Compact Popover Trigger Pill under Bed Cards */
+    div[data-testid="stPopover"] {
+        display: flex !important;
+        justify-content: center !important;
+        margin-top: -2px !important;
+        margin-bottom: 8px !important;
+    }
     div[data-testid="stPopover"] > button {
-        background: #161f30 !important;
-        color: #cbd5e1 !important;
-        border: 1px solid #334155 !important;
-        border-radius: 6px !important;
-        padding: 2px 8px !important;
-        font-size: 11px !important;
+        background: #111827 !important;
+        color: #94a3b8 !important;
+        border: 1px solid #1f2937 !important;
+        border-radius: 999px !important;
+        padding: 0px 8px !important;
+        font-size: 9.5px !important;
         font-weight: 600 !important;
-        min-height: 26px !important;
-        height: 26px !important;
-        margin-top: -4px !important;
-        margin-bottom: 10px !important;
+        min-height: 20px !important;
+        height: 20px !important;
+        line-height: 1 !important;
+        width: auto !important;
         box-shadow: none !important;
     }
     div[data-testid="stPopover"] > button:hover {
         background: #1e293b !important;
-        color: #ffffff !important;
-        border-color: #64748b !important;
+        color: #f8fafc !important;
+        border-color: #475569 !important;
+    }
+    div[data-testid="stPopover"] > button svg {
+        width: 10px !important;
+        height: 10px !important;
     }
     [data-testid="stMetric"], .stForm, .stExpander {
         background: #111827 !important; 
@@ -642,7 +652,6 @@ with st.sidebar:
                         pay_val = str(row.get(pay_col, "")).strip() if pd.notna(row.get(pay_col)) else "-"
                         uhid_val = str(row.get(uhid_col, "")).strip() if (uhid_col != "None" and pd.notna(row.get(uhid_col))) else ""
 
-                        # Preserve existing manual tags (VIP / NEWBORN BABY) & Discharge Under Process if same patient
                         existing_bed = live_data.get(matched_bed, {})
                         same_patient = existing_bed.get("patient", "").strip().lower() == p_val.lower()
                         kept_tags = existing_bed.get("tags", []) if same_patient else []
@@ -1058,7 +1067,6 @@ with st.expander("📋 PATIENT SHIFTING & PRIORITY QUEUE MANAGEMENT", expanded=T
             else:
                 r_cols[9].markdown(f"<span style='color:{color}; font-weight:700;'>{current_status}</span>", unsafe_allow_html=True)
             
-            # Official Printable HTML Receipt (A3, Upper-Left, Clean Fields, Fitted Logo)
             if current_status == "DONE":
                 receipt_html = generate_advanced_receipt_html(r, today_date_str, current_time_str)
                 r_cols[10].download_button(
@@ -1069,7 +1077,6 @@ with st.expander("📋 PATIENT SHIFTING & PRIORITY QUEUE MANAGEMENT", expanded=T
                     key=f"rec_{r['ID']}"
                 )
 
-            # Neutral Entry Timestamp (Zero Priority Reflection)
             st.markdown(
                 f"<div style='font-size: 11px; color: #94a3b8; margin-left: 35px; margin-top: -10px; margin-bottom: 10px;'>🕒 Entry Timestamp (IST): <b>{ts_str}</b></div>",
                 unsafe_allow_html=True
@@ -1090,7 +1097,7 @@ with c_col3: st.download_button("🎖️ 3 - ECHS", get_pdf_data("consent_echs.p
 with c_col4: st.download_button("🏥 4 - CGHS CREDIT/PSU", get_pdf_data("consent_cghs_credit.pdf") or b"", file_name="Consent_CGHS_Credit.pdf", mime="application/pdf")
 with c_col5: st.download_button("🏢 5 - TPA", get_pdf_data("consent_tpa.pdf") or b"", file_name="Consent_TPA.pdf", mime="application/pdf")
 
-# --- 8. VISUAL LIVE BED DASHBOARD WITH INTERACTIVE TICK/TAG POPOVER ---
+# --- 8. VISUAL LIVE BED DASHBOARD WITH MINIMAL TAG PILL & MOTHER-BABY ICON ---
 if show_dashboard:
     status_styles = {
         "VACANT":                  {"bg": "#FFFFFF", "txt": "#0F172A", "border": "1px solid #CBD5E1"},
@@ -1104,7 +1111,7 @@ if show_dashboard:
     }
 
     st.title("🏥 Live Bed Status")
-    st.caption("Click **⚙️ Tag / Status** below any bed block to tick **Admitted**, **Discharge Under Process**, **Discharged (Vacate)**, **👑 VIP**, or **👶 Newborn Baby**.")
+    st.caption("Use the minimal **⚙️ Tag** pill under any bed block to tick **Admitted**, **Discharge Under Process**, **Discharged**, **👑 VIP**, or **👩‍🍼 Mother with Newborn Baby**.")
 
     for wing, beds in bed_structure.items():
         st.subheader(wing)
@@ -1122,15 +1129,15 @@ if show_dashboard:
             txt = st_cfg["txt"]
             border_css = "2px solid #F59E0B" if "VIP" in bed_tags else st_cfg["border"]
 
-            # Render Badges for VIP & Newborn Baby directly inside the Bed Block
+            # Render Compact Badges for VIP & Mother with Newborn Baby (👩‍🍼)
             badges_html = ""
             if "VIP" in bed_tags or "NEWBORN BABY" in bed_tags:
                 b_items = []
                 if "VIP" in bed_tags:
-                    b_items.append("<span style='background:#FEF3C7; color:#B45309; border:1px solid #F59E0B; padding:1px 6px; border-radius:4px; font-size:9px; font-weight:800;'>👑 VIP</span>")
+                    b_items.append("<span style='background:#FEF3C7; color:#B45309; border:1px solid #F59E0B; padding:1px 5px; border-radius:4px; font-size:8.5px; font-weight:800;'>👑 VIP</span>")
                 if "NEWBORN BABY" in bed_tags:
-                    b_items.append("<span style='background:#E0F2FE; color:#0369A1; border:1px solid #38BDF8; padding:1px 6px; border-radius:4px; font-size:9px; font-weight:800;'>👶 NEWBORN</span>")
-                badges_html = "<div style='margin-top:2px; margin-bottom:2px; display:flex; gap:4px; justify-content:center; flex-wrap:wrap;'>" + "".join(b_items) + "</div>"
+                    b_items.append("<span style='background:#FCE7F3; color:#9D174D; border:1px solid #F472B6; padding:1px 5px; border-radius:4px; font-size:8.5px; font-weight:800;' title='Mother with Newborn Baby'>👩‍🍼 Mother & Baby</span>")
+                badges_html = "<div style='margin-top:2px; margin-bottom:1px; display:flex; gap:4px; justify-content:center; flex-wrap:wrap;'>" + "".join(b_items) + "</div>"
 
             pat_line = f"<b>{data.get('patient', '')}</b>" if data.get('patient') else "<i>Available</i>"
             dr_line = f"<br><span style='font-size:9.5px; opacity:0.88;'>👨‍⚕️ {data.get('dr_name')}</span>" if data.get('dr_name') else ""
@@ -1138,7 +1145,7 @@ if show_dashboard:
 
             with cols[i % 5]:
                 st.markdown(
-                    f'<div style="background-color:{bg}; color:{txt}; padding:7px 5px; border:{border_css}; border-radius:7px; text-align:center; min-height:122px; font-size:11px; margin-bottom:4px;">'
+                    f'<div style="background-color:{bg}; color:{txt}; padding:7px 5px; border:{border_css}; border-radius:7px; text-align:center; min-height:118px; font-size:11px; margin-bottom:2px;">'
                     f'<b style="font-size:11.5px;">{bed}</b><br>'
                     f'<span style="font-size:9.5px; font-weight:800;">{display_status}</span>'
                     f'{badges_html}<br>'
@@ -1148,8 +1155,8 @@ if show_dashboard:
                     unsafe_allow_html=True
                 )
 
-                # Interactive Tick/Circle Popover attached to each Bed Block
-                with st.popover("⚙️ Tag / Status", use_container_width=True):
+                # Minimal Centered Popover Pill
+                with st.popover("⚙️ Tag", use_container_width=False):
                     st.markdown(f"**🛏️ {bed}**")
                     radio_options = [
                         "ADMITTED",
@@ -1180,13 +1187,13 @@ if show_dashboard:
                     st.markdown("**Special Patient Tags:**")
                     tc1, tc2 = st.columns(2)
                     tick_vip = tc1.checkbox("👑 VIP", value=("VIP" in bed_tags), key=f"t_vip_{bed}")
-                    tick_baby = tc2.checkbox("👶 Newborn", value=("NEWBORN BABY" in bed_tags), key=f"t_baby_{bed}")
+                    tick_baby = tc2.checkbox("👩‍🍼 Mother & Baby", value=("NEWBORN BABY" in bed_tags), key=f"t_baby_{bed}")
 
                     q_pat = st.text_input("Patient Name", value=data.get("patient", ""), key=f"q_pat_{bed}")
                     q_dr = st.text_input("Doctor Name", value=data.get("dr_name", ""), key=f"q_dr_{bed}")
                     q_pay = st.text_input("Payer / Insurer", value=data.get("payer", ""), key=f"q_pay_{bed}")
 
-                    if st.button("✅ Save Bed Tag", key=f"save_b_{bed}", use_container_width=True):
+                    if st.button("✅ Save", key=f"save_b_{bed}", use_container_width=True):
                         if sel_state == "DISCHARGED (VACATE BED)":
                             db.collection("beds").document(bed).set({
                                 "status": "VACANT",
