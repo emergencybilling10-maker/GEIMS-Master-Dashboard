@@ -297,7 +297,7 @@ def generate_advanced_receipt_html(req_data, date_str, generated_time_str):
 </body>
 </html>"""
 
-# --- SIMPLE, FLAT MATTE INTERFACE (NO GLOW, ULTRA-MINIMAL TAG PILL) ---
+# --- SIMPLE, FLAT MATTE INTERFACE (NO GLOW, ICON-ONLY POPOVER PILL) ---
 st.markdown("""
 <style>
     .stAppDeployButton, a[href*="github.com"], [data-testid="stSourceCodeLink"] {
@@ -322,7 +322,7 @@ st.markdown("""
         border-color: #60a5fa !important;
         box-shadow: none !important;
     }
-    /* Ultra-Minimal Compact Popover Trigger Pill under Bed Cards */
+    /* Icon-Only Compact Popover Trigger Pill under Bed Cards */
     div[data-testid="stPopover"] {
         display: flex !important;
         justify-content: center !important;
@@ -334,11 +334,11 @@ st.markdown("""
         color: #94a3b8 !important;
         border: 1px solid #1f2937 !important;
         border-radius: 999px !important;
-        padding: 0px 8px !important;
-        font-size: 9.5px !important;
+        padding: 0px 6px !important;
+        font-size: 10px !important;
         font-weight: 600 !important;
-        min-height: 20px !important;
-        height: 20px !important;
+        min-height: 19px !important;
+        height: 19px !important;
         line-height: 1 !important;
         width: auto !important;
         box-shadow: none !important;
@@ -349,8 +349,8 @@ st.markdown("""
         border-color: #475569 !important;
     }
     div[data-testid="stPopover"] > button svg {
-        width: 10px !important;
-        height: 10px !important;
+        width: 9px !important;
+        height: 9px !important;
     }
     [data-testid="stMetric"], .stForm, .stExpander {
         background: #111827 !important; 
@@ -598,7 +598,7 @@ with st.sidebar:
         # --- SMART EXCEL / CSV AUTO-SYNC ENGINE ---
         st.divider()
         st.subheader("⚡ Smart Excel Bed Auto-Sync")
-        st.caption("Upload Occupancy Excel/CSV to auto-fill occupied beds, remove OPD rows, and vacate discharged beds (preserves VIP/Newborn tags).")
+        st.caption("Upload Occupancy Excel/CSV to auto-fill occupied beds, remove OPD rows, and preserve VIP/Newborn/Discharged tags.")
         uploaded_census = st.file_uploader("Upload Occupancy Sheet (.xlsx / .csv)", type=["xlsx", "xls", "csv"])
         
         if uploaded_census is not None:
@@ -655,11 +655,10 @@ with st.sidebar:
                         existing_bed = live_data.get(matched_bed, {})
                         same_patient = existing_bed.get("patient", "").strip().lower() == p_val.lower()
                         kept_tags = existing_bed.get("tags", []) if same_patient else []
-                        kept_status = (
-                            "DISCHARGE UNDER PROCESS"
-                            if (same_patient and existing_bed.get("status") in ["DISCHARGE UNDER PROCESS", "DISCHARGE"])
-                            else "ADMITTED"
-                        )
+                        if same_patient and existing_bed.get("status") in ["DISCHARGE UNDER PROCESS", "DISCHARGE", "DISCHARGED"]:
+                            kept_status = existing_bed.get("status")
+                        else:
+                            kept_status = "ADMITTED"
 
                         occupied_map[matched_bed] = {
                             "status": kept_status,
@@ -807,13 +806,13 @@ with st.sidebar:
 
         st.divider(); st.subheader("⚙️ Manual Bed Update")
         m_bed = st.selectbox("Select Bed ID", all_bed_ids)
-        m_stat = st.selectbox("Status", ["VACANT", "ADMITTED", "DISCHARGE UNDER PROCESS", "DISCHARGED", "BOOKED", "MAINTENANCE", "RESTRICTED"])
+        m_stat = st.selectbox("Status", ["ADMITTED", "DISCHARGE UNDER PROCESS", "DISCHARGED", "VACANT", "BOOKED", "MAINTENANCE", "RESTRICTED"])
         m_tags = st.multiselect("Patient Tags", ["VIP", "NEWBORN BABY"])
         m_name = st.text_input("Patient Name Override")
         m_dr = st.text_input("Doctor Name Override")
         m_pay = st.text_input("Payer / Category Override")
         if st.button("Apply Bed Update"):
-            if m_stat in ["VACANT", "DISCHARGED"]:
+            if m_stat == "VACANT":
                 db.collection("beds").document(m_bed).set({
                     "status": "VACANT",
                     "patient": "",
@@ -1097,7 +1096,7 @@ with c_col3: st.download_button("🎖️ 3 - ECHS", get_pdf_data("consent_echs.p
 with c_col4: st.download_button("🏥 4 - CGHS CREDIT/PSU", get_pdf_data("consent_cghs_credit.pdf") or b"", file_name="Consent_CGHS_Credit.pdf", mime="application/pdf")
 with c_col5: st.download_button("🏢 5 - TPA", get_pdf_data("consent_tpa.pdf") or b"", file_name="Consent_TPA.pdf", mime="application/pdf")
 
-# --- 8. VISUAL LIVE BED DASHBOARD WITH MINIMAL TAG PILL & MOTHER-BABY ICON ---
+# --- 8. VISUAL LIVE BED DASHBOARD WITH ICON-ONLY POPOVER & PRESERVED DISCHARGED DATA ---
 if show_dashboard:
     status_styles = {
         "VACANT":                  {"bg": "#FFFFFF", "txt": "#0F172A", "border": "1px solid #CBD5E1"},
@@ -1105,13 +1104,14 @@ if show_dashboard:
         "ALLOTTED":                {"bg": "#1E293B", "txt": "#FFFFFF", "border": "1px solid #475569"},
         "DISCHARGE UNDER PROCESS": {"bg": "#FEF3C7", "txt": "#92400E", "border": "2px solid #F59E0B"},
         "DISCHARGE":               {"bg": "#FEF3C7", "txt": "#92400E", "border": "2px solid #F59E0B"},
+        "DISCHARGED":              {"bg": "#E0F2FE", "txt": "#075985", "border": "2px solid #0284C7"},
         "BOOKED":                  {"bg": "#DCFCE7", "txt": "#166534", "border": "1px solid #86EFAC"},
         "MAINTENANCE":             {"bg": "#E2E8F0", "txt": "#334155", "border": "1px solid #94A3B8"},
         "RESTRICTED":              {"bg": "#FEE2E2", "txt": "#991B1B", "border": "1px solid #FCA5A5"}
     }
 
     st.title("🏥 Live Bed Status")
-    st.caption("Use the minimal **⚙️ Tag** pill under any bed block to tick **Admitted**, **Discharge Under Process**, **Discharged**, **👑 VIP**, or **👩‍🍼 Mother with Newborn Baby**.")
+    st.caption("Click the **⚙️** icon under any bed block to mark **Admitted**, **Discharge Under Process**, **Discharged** (keeps patient details), **👑 VIP**, or **👩‍🍼 Mother with Newborn Baby**.")
 
     for wing, beds in bed_structure.items():
         st.subheader(wing)
@@ -1155,13 +1155,14 @@ if show_dashboard:
                     unsafe_allow_html=True
                 )
 
-                # Minimal Centered Popover Pill
-                with st.popover("⚙️ Tag", use_container_width=False):
+                # Icon-Only Minimal Popover Button (No "Tag" text)
+                with st.popover("⚙️", use_container_width=False):
                     st.markdown(f"**🛏️ {bed}**")
                     radio_options = [
                         "ADMITTED",
                         "DISCHARGE UNDER PROCESS",
-                        "DISCHARGED (VACATE BED)",
+                        "DISCHARGED",
+                        "VACANT",
                         "BOOKED",
                         "MAINTENANCE",
                         "RESTRICTED"
@@ -1170,8 +1171,10 @@ if show_dashboard:
                         default_idx = 0
                     elif display_status == "DISCHARGE UNDER PROCESS":
                         default_idx = 1
-                    elif display_status == "VACANT":
+                    elif display_status == "DISCHARGED":
                         default_idx = 2
+                    elif display_status == "VACANT":
+                        default_idx = 3
                     elif display_status in radio_options:
                         default_idx = radio_options.index(display_status)
                     else:
@@ -1194,7 +1197,7 @@ if show_dashboard:
                     q_pay = st.text_input("Payer / Insurer", value=data.get("payer", ""), key=f"q_pay_{bed}")
 
                     if st.button("✅ Save", key=f"save_b_{bed}", use_container_width=True):
-                        if sel_state == "DISCHARGED (VACATE BED)":
+                        if sel_state == "VACANT":
                             db.collection("beds").document(bed).set({
                                 "status": "VACANT",
                                 "patient": "",
